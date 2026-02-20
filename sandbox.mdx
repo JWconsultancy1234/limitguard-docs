@@ -1,0 +1,151 @@
+---
+title: "Sandbox Mode"
+description: "Test the API for free — no wallet or API key required"
+---
+
+Sandbox mode lets you test the LimitGuard API without using real data sources, making USDC payments, or consuming your monthly quota.
+
+## How to Activate
+
+Two methods — both produce the same behavior:
+
+<Tabs>
+  <Tab title="Header-Based (Recommended)">
+    Add `X-LimitGuard-Mode: sandbox` to any request:
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.limitguard.ai/v1/entity/check \
+      -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+      -H "X-LimitGuard-Mode: sandbox" \
+      -H "Content-Type: application/json" \
+      -d '{"entity_name": "Any Company Name", "country": "NL"}'
+    ```
+
+    ```python Python
+    response = httpx.post(
+        "https://api.limitguard.ai/v1/entity/check",
+        headers={
+            "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+            "X-LimitGuard-Mode": "sandbox",
+        },
+        json={"entity_name": "Any Company Name", "country": "NL"},
+    )
+    ```
+
+    ```javascript JavaScript
+    const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
+      method: "POST",
+      headers: {
+        "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+        "X-LimitGuard-Mode": "sandbox",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ entity_name: "Any Company Name", country: "NL" }),
+    });
+    ```
+
+    </CodeGroup>
+
+    Works with any API key (live or test). The header takes precedence.
+  </Tab>
+  <Tab title="Test Key Prefix">
+    Use an API key starting with `lg_test_`:
+
+    ```bash
+    curl -X POST https://api.limitguard.ai/v1/entity/check \
+      -H "X-API-Key: lg_test_xxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -d '{"entity_name": "Any Company Name", "country": "NL"}'
+    ```
+
+    Any key starting with `lg_test_` automatically activates sandbox mode for all requests.
+  </Tab>
+</Tabs>
+
+## Sandbox Behavior
+
+| Property | Behavior |
+|----------|----------|
+| **Data sources** | No real sources called (KVK, sanctions, VIES, etc.) |
+| **Responses** | Deterministic mock data — same input always gives same output |
+| **Payments** | No USDC payment required — x402 is skipped |
+| **Quota** | Not consumed |
+| **Rate limit** | 10 requests per minute per IP |
+
+## Mock Data Examples
+
+### /v1/entity/check (sandbox)
+
+```json
+{
+  "trust_score": 75,
+  "trust_level": "medium",
+  "cluster": "established_eu_sme",
+  "recommendation": "review",
+  "confidence": 0.80,
+  "top_factors": [
+    {"source": "mock", "signal": "Sandbox mock data", "impact": "neutral", "weight": 1.0}
+  ],
+  "sources_checked": ["mock"],
+  "processing_time_ms": 5
+}
+```
+
+### /v1/risk/score (sandbox)
+
+```json
+{
+  "risk_score": 25,
+  "risk_level": "medium",
+  "recommendation": "review",
+  "top_factors": [],
+  "processing_time_ms": 5
+}
+```
+
+## Rate Limit Response
+
+When the sandbox rate limit is exceeded:
+
+```json
+HTTP 429
+
+{
+  "error": "Sandbox rate limit exceeded (10 req/min). Use a real API key for higher limits."
+}
+```
+
+The response includes a `Retry-After: 60` header.
+
+## Use Cases
+
+| Scenario | Recommendation |
+|----------|---------------|
+| First-time integration | Header sandbox + any API key |
+| CI/CD automated tests | `lg_test_` prefix key in env vars |
+| Frontend development | Header sandbox to avoid quota |
+| Load testing | Sandbox — never load test production |
+| Demo / prototype | Header sandbox |
+
+## Middleware Execution Order
+
+Sandbox detection runs **before** x402 payment verification in the middleware stack:
+
+```
+Request → Logging → Security → Size Limit → Rate Limit → Tenant → Sandbox → x402 → Router
+```
+
+<Note>
+This means sandbox mode skips payment verification entirely. The x402 middleware sees the sandbox flag and passes through without checking for payment.
+</Note>
+
+## Transitioning to Production
+
+When ready to use real data:
+
+1. Remove `X-LimitGuard-Mode: sandbox` header, or
+2. Switch from `lg_test_` key to a `lg_live_` key
+
+No other code changes required. The same endpoints, request format, and response structure apply in both modes.

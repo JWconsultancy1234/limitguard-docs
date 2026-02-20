@@ -1,0 +1,928 @@
+---
+title: "Error Handling"
+description: "Complete error catalog with causes and fixes"
+---
+
+All LimitGuard API errors follow [RFC 7807 Problem Details](https://www.rfc-editor.org/rfc/rfc7807) for consistent, machine-readable responses. Every error has a `type`, `title`, `status`, and `detail` field — making automated error handling straightforward for both human developers and AI agents.
+
+<Note>
+The `type` field is always `"about:blank"` in the current API version. Future versions may introduce specific problem type URIs.
+</Note>
+
+## Status Code Reference
+
+| Code | Name | Common Cause |
+|------|------|--------------|
+| `200` | OK | Successful GET or POST with result |
+| `201` | Created | Resource successfully created (e.g., API key, webhook) |
+| `204` | No Content | Successful DELETE — no body returned |
+| `400` | Bad Request | Missing required field or malformed JSON |
+| `401` | Unauthorized | Missing or invalid `X-API-Key` |
+| `402` | Payment Required | x402 — no payment header sent, or insufficient amount |
+| `403` | Forbidden | Key exists but lacks permission for this endpoint or tier |
+| `404` | Not Found | Entity, webhook, or resource ID does not exist |
+| `409` | Conflict | Duplicate resource (e.g., webhook URL already registered) |
+| `422` | Unprocessable Entity | Request parsed but field values are invalid |
+| `429` | Too Many Requests | Rate limit or monthly quota exceeded |
+| `500` | Internal Server Error | Unexpected server error — safe to retry |
+| `503` | Service Unavailable | Planned maintenance or cascading dependency failure |
+
+---
+
+## Error Response Format
+
+### Standard Error
+
+All non-2xx responses return RFC 7807 problem details:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid or missing API key"
+}
+```
+
+### Validation Error (422)
+
+Field-level validation errors return a `detail` array instead of a string. Field names are sanitized — internal paths are not exposed:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation Error",
+  "status": 422,
+  "detail": [
+    {"field": "country", "message": "Invalid ISO 3166-1 alpha-2 country code"},
+    {"field": "entity_name", "message": "Must be between 2 and 255 characters"}
+  ]
+}
+```
+
+<Tip>
+When `detail` is an array, iterate over it to surface all field errors at once. This avoids fixing one error only to encounter the next on retry.
+</Tip>
+
+---
+
+## 400 Bad Request
+
+<AccordionGroup>
+  <Accordion title="Missing required field">
+    **Cause:** A required request body field is absent entirely, or the request body is missing.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Bad Request",
+      "status": 400,
+      "detail": "Missing required field: entity_name"
+    }
+    ```
+
+    **Fix:** Check that your request includes all required fields. For `/v1/entity/check`, both `entity_name` and `country` are required. Verify you are sending `Content-Type: application/json` and a valid JSON body.
+  </Accordion>
+
+  <Accordion title="Malformed JSON body">
+    **Cause:** The request body cannot be parsed as JSON — often a trailing comma, unclosed brace, or non-UTF-8 encoding.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Bad Request",
+      "status": 400,
+      "detail": "Invalid JSON body"
+    }
+    ```
+
+    **Fix:** Validate your JSON before sending. Use `json.dumps()` in Python or `JSON.stringify()` in JavaScript rather than constructing JSON strings manually.
+  </Accordion>
+
+  <Accordion title="Unsupported Content-Type">
+    **Cause:** The `Content-Type` header is missing or set to a value other than `application/json` on a POST endpoint.
+
+    **Fix:** Always include `-H "Content-Type: application/json"` on POST requests.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 401 Unauthorized
+
+<AccordionGroup>
+  <Accordion title="Missing X-API-Key header">
+    **Cause:** The request reached an authenticated endpoint without an `X-API-Key` header, and no `X-PAYMENT` header was provided either.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Unauthorized",
+      "status": 401,
+      "detail": "Invalid or missing API key"
+    }
+    ```
+
+    **Fix:** Add `X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx` to every request. Free endpoints (health, key creation, well-known routes) never require authentication.
+  </Accordion>
+
+  <Accordion title="Revoked or expired key">
+    **Cause:** The key was valid but has since been revoked or expired.
+
+    **Fix:** Create a new key via `POST /v1/keys/create`. Keys are returned once — if lost, create a new one.
+  </Accordion>
+
+  <Accordion title="Key prefix mismatch">
+    **Cause:** A sandbox key (`lg_test_`) is being used without the `X-LimitGuard-Mode: sandbox` header against a live endpoint, or vice versa.
+
+    **Fix:** Use `lg_live_` keys for production. `lg_test_` keys automatically activate sandbox mode regardless of headers.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 402 Payment Required
+
+HTTP 402 is a **protocol response**, not just an error. LimitGuard implements the x402 V2 micropayment protocol. When you receive a 402, the response body is not an RFC 7807 error — it is a payment requirements object.
+
+<Note>
+For AI agents, 402 is the expected first response when no payment or API key is provided. The correct flow is: receive 402 → build payment → retry with `X-PAYMENT` header.
+</Note>
+
+### Payment Requirements Response
+
+```json
+{
+  "x402Version": "2",
+  "error": "Payment Required",
+  "accepts": [
+    {
+      "chainId": "eip155:8453",
+      "currency": "USDC",
+      "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "amount": "50000",
+      "decimals": 6,
+      "recipient": "0xFacilitatorAddress",
+      "description": "LimitGuard API call (0.05 USDC)"
+    },
+    {
+      "chainId": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "currency": "USDC",
+      "contractAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "amount": "50000",
+      "decimals": 6,
+      "recipient": "SolanaFacilitatorAddress",
+      "description": "LimitGuard API call (0.05 USDC)"
+    }
+  ]
+}
+```
+
+### x402 Payment Flow
+
+<Steps>
+  <Step title="Receive 402">
+    Parse the `accepts` array. Choose a network (`chainId`) your agent can pay on.
+  </Step>
+  <Step title="Check the amount">
+    The `amount` field uses 6 decimal places. `50000` = $0.05 USDC. Verify your wallet has sufficient balance before signing.
+  </Step>
+  <Step title="Build EIP-3009 signature (EVM) or SPL transfer (Solana)">
+    Sign a `TransferWithAuthorization` with a unique nonce and a `validBefore` 5 minutes in the future. See the [x402 Protocol](/x402-protocol) guide for full code examples.
+  </Step>
+  <Step title="Retry with X-PAYMENT header">
+    Base64-encode your payment payload and attach it as `X-PAYMENT`. Retry the exact same endpoint and body.
+  </Step>
+</Steps>
+
+### Common 402 Sub-Cases
+
+<AccordionGroup>
+  <Accordion title="Insufficient payment amount">
+    **Cause:** The `amount` in your payment object is less than the minimum required for the endpoint and quality tier.
+
+    ```json
+    {
+      "x402Version": "2",
+      "error": "Payment amount insufficient. Required: 50000, provided: 10000",
+      "accepts": [...]
+    }
+    ```
+
+    **Fix:** Use the `amount` value from the 402 response exactly. If using a non-default `X-Response-Quality` tier, the required amount changes — `cached` requires less, `enhanced` requires more. See the [pricing table](/pricing) for per-endpoint amounts.
+  </Accordion>
+
+  <Accordion title="Expired payment signature (validBefore exceeded)">
+    **Cause:** The `validBefore` timestamp in the EIP-3009 signature has passed. Signatures are valid for 5 minutes.
+
+    **Fix:** Rebuild the payment with a fresh timestamp. Do not cache signatures for reuse — build a new one per request.
+  </Accordion>
+
+  <Accordion title="Nonce replay detected">
+    **Cause:** The same nonce was used in a previous request within the last 5 minutes.
+
+    ```json
+    {
+      "error": "Nonce already used (replay detected)"
+    }
+    ```
+
+    **Fix:** Generate a cryptographically random 32-byte nonce for every request. Never reuse nonces, even if the previous request failed.
+  </Accordion>
+
+  <Accordion title="Invalid payment signature">
+    **Cause:** The EIP-712 signature does not verify against the claimed sender address, or the Solana signature is malformed.
+
+    **Fix:** Ensure the `sender` field matches the wallet that signed the transaction. Verify the EIP-712 domain parameters match exactly: `name: "USD Coin"`, `version: "2"`, `chainId` as integer, `verifyingContract` as the USDC contract address.
+  </Accordion>
+
+  <Accordion title="Unsupported chain">
+    **Cause:** The `chainId` in your payment is not in the accepted list.
+
+    **Fix:** Use one of the four supported chain IDs: `eip155:8453` (Base Mainnet), `eip155:84532` (Base Sepolia), `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (Solana Mainnet), or `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` (Solana Devnet).
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+For testing x402 without spending real USDC, use Base Sepolia or Solana Devnet. Both are listed in the `accepts` array from sandbox and test environments.
+</Tip>
+
+---
+
+## 403 Forbidden
+
+<AccordionGroup>
+  <Accordion title="Endpoint not available on current tier">
+    **Cause:** Your API key tier does not include access to the requested endpoint. For example, `/v1/kyb/check` and `/v1/compliance/*` are only available on `pro` and `enterprise` tiers.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Forbidden",
+      "status": 403,
+      "detail": "Endpoint /v1/kyb/check requires pro tier or higher"
+    }
+    ```
+
+    **Fix:** Upgrade your tier or use a tier-appropriate endpoint. See the [pricing page](/pricing) for tier access matrix.
+  </Accordion>
+
+  <Accordion title="Sandbox key on live endpoint">
+    **Cause:** An `lg_test_` key is being used but the request is routed to live data sources.
+
+    **Fix:** Use `lg_live_` keys for production. Test keys are sandboxed — they only return mock data.
+  </Accordion>
+
+  <Accordion title="Read-only key attempting write">
+    **Cause:** The key was provisioned as read-only (e.g., a webhook consumer key) and is attempting a mutating operation.
+
+    **Fix:** Use the correct key for the operation, or create a new key with the required permissions.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 404 Not Found
+
+<AccordionGroup>
+  <Accordion title="Entity not found">
+    **Cause:** A lookup endpoint (e.g., `GET /v1/reputation/history/{entity_hash}`) was called with an entity hash that does not exist in the system.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Not Found",
+      "status": 404,
+      "detail": "Entity hash abc123 not found"
+    }
+    ```
+
+    **Fix:** Entity hashes are generated by LimitGuard from the entity data. Run a `POST /v1/entity/check` first to create the entity record, then use the returned `entity_hash` for subsequent lookups.
+  </Accordion>
+
+  <Accordion title="Webhook not found">
+    **Cause:** A `DELETE /v1/webhooks/{webhook_id}` or test call was made with an unknown `webhook_id`.
+
+    **Fix:** Use `GET /v1/webhooks` to list all registered webhooks and confirm the correct `webhook_id`.
+  </Accordion>
+
+  <Accordion title="Unknown endpoint path">
+    **Cause:** The URL path does not exist — often a typo (e.g., `/v1/entity/checks` instead of `/v1/entity/check`) or a missing version prefix.
+
+    **Fix:** All API endpoints are under `/v1/`. Refer to the [API Reference](/api-reference/introduction) for the exact path of each endpoint.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 409 Conflict
+
+<AccordionGroup>
+  <Accordion title="Duplicate webhook URL">
+    **Cause:** A webhook with the same URL is already registered for your API key.
+
+    ```json
+    {
+      "type": "about:blank",
+      "title": "Conflict",
+      "status": 409,
+      "detail": "Webhook URL https://your-server.com/hook is already registered"
+    }
+    ```
+
+    **Fix:** Use `GET /v1/webhooks` to check existing registrations. If you want to update events for an existing webhook, delete it first and re-create with the new configuration.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 422 Unprocessable Entity
+
+422 errors occur when the request is syntactically valid JSON but the field values fail business-logic validation. The `detail` field is always an **array** of field-level errors.
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation Error",
+  "status": 422,
+  "detail": [
+    {"field": "country", "message": "Invalid ISO 3166-1 alpha-2 country code"},
+    {"field": "kvk_number", "message": "KVK number must be exactly 8 digits"}
+  ]
+}
+```
+
+<Warning>
+422 responses are sanitized — internal field paths and database details are never exposed. The `field` name matches the key in your request body.
+</Warning>
+
+### Common Validation Errors
+
+<AccordionGroup>
+  <Accordion title="Invalid country code">
+    **Cause:** `country` is not a valid [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) code, or uses the alpha-3 format.
+
+    **Fix:** Use two-letter uppercase codes: `NL`, `BE`, `DE`, `FR`, `US`. Not `NLD`, `Netherlands`, or lowercase `nl`.
+  </Accordion>
+
+  <Accordion title="entity_name too short or too long">
+    **Cause:** `entity_name` is fewer than 2 characters or more than 255 characters.
+
+    **Fix:** Pass the legal entity name as registered. Single-character values and very long strings are rejected.
+  </Accordion>
+
+  <Accordion title="Invalid KVK number format">
+    **Cause:** `kvk_number` contains non-numeric characters or is not exactly 8 digits.
+
+    **Fix:** KVK numbers are always 8 digits: `"12345678"`. Do not include spaces, dashes, or the `KVK:` prefix.
+  </Accordion>
+
+  <Accordion title="Invalid IBAN format">
+    **Cause:** `iban` fails structural validation (country prefix, check digits, or length for the given country).
+
+    **Fix:** Pass a complete IBAN including country code and check digits: `"NL91ABNA0417164300"`. Strip spaces before sending.
+  </Accordion>
+
+  <Accordion title="Invalid VAT number format">
+    **Cause:** `vat_number` does not match the expected format for the given country prefix.
+
+    **Fix:** Include the country prefix: `"NL123456789B01"`, `"BE0123456789"`. Format rules vary by country — see the [European Commission VIES guidelines](https://ec.europa.eu/taxation_customs/vies/) for country-specific formats.
+  </Accordion>
+
+  <Accordion title="Invalid wallet address">
+    **Cause:** `wallet_address` is not a valid EVM (0x..., 42 chars) or Solana (base58, 32-44 chars) address.
+
+    **Fix:** Validate the address client-side before sending. EVM addresses must be checksummed or all-lowercase hex. Solana addresses must be valid base58.
+  </Accordion>
+
+  <Accordion title="Invalid domain format">
+    **Cause:** `domain` contains a protocol prefix, path, or query string instead of a bare hostname.
+
+    **Fix:** Send the bare domain only: `"acmecorp.nl"` — not `"https://acmecorp.nl/about?lang=en"`.
+  </Accordion>
+
+  <Accordion title="Invalid webhook event type">
+    **Cause:** `events` array in `POST /v1/webhooks` contains an unrecognized event name.
+
+    **Fix:** Use events from the supported list: `trust_score.updated`, `compliance.alert`, `entity.flagged`, `risk.threshold_exceeded`. Check `GET /v1/webhooks` for the current supported list.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 429 Too Many Requests
+
+LimitGuard enforces two independent limits: a per-minute rate limit and a monthly quota.
+
+### Rate Limit Response
+
+```json
+{
+  "type": "about:blank",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Rate limit exceeded. Retry after 34 seconds."
+}
+```
+
+### Retry-After Header
+
+Every 429 response includes a `Retry-After` header with the number of seconds to wait:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 34
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1740052800
+```
+
+| Header | Description |
+|--------|-------------|
+| `Retry-After` | Seconds until the rate limit window resets |
+| `X-RateLimit-Limit` | Maximum requests allowed per minute for your tier |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+
+### Rate Limits by Tier
+
+| Tier | Requests/min | Monthly Quota |
+|------|-------------|---------------|
+| Free | 10 | 500 |
+| Starter | 60 | 5,000 |
+| Pro | 300 | 50,000 |
+| Enterprise | Custom | Custom |
+| x402 (no key) | 30 | Unlimited (pay-per-use) |
+
+### Monthly Quota Exceeded
+
+When your monthly quota is exhausted, the `detail` changes:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Monthly quota of 500 requests exceeded. Quota resets on 2026-03-01."
+}
+```
+
+**Fix:** Upgrade your tier or switch to x402 pay-per-use for the remainder of the month. Monthly quotas reset on the first of each month UTC.
+
+<Tip>
+Use the `X-Response-Quality: cached` header where acceptable — cached responses do not consume monthly quota if the entity was already scored within the cache TTL.
+</Tip>
+
+---
+
+## 500 Internal Server Error
+
+```json
+{
+  "type": "about:blank",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "An unexpected error occurred. Request ID: req_abc123xyz"
+}
+```
+
+**Cause:** An unhandled exception occurred server-side. This is always a LimitGuard bug, never a client error.
+
+**Fix:**
+1. Note the `Request ID` from the `detail` field.
+2. Retry with exponential backoff — most 500s are transient.
+3. If the error persists for more than 5 minutes, check [api.limitguard.ai/health](https://api.limitguard.ai/health) for service status.
+4. Report persistent 500s to [support@limitguard.ai](mailto:support@limitguard.ai) with the Request ID.
+
+<Warning>
+500 errors on write operations (webhook creation, compliance subscription) should not be retried blindly — the operation may have partially succeeded. Check the resource state first with a GET before retrying.
+</Warning>
+
+---
+
+## 503 Service Unavailable
+
+```json
+{
+  "type": "about:blank",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "LimitGuard is undergoing maintenance. Expected recovery: 14:30 UTC."
+}
+```
+
+**Cause:** Planned maintenance window or a cascading failure in a critical dependency (e.g., the sanctions list provider is unreachable and the circuit breaker is open).
+
+**Fix:**
+- Check `Retry-After` header if present.
+- Subscribe to status updates at [api.limitguard.ai/health](https://api.limitguard.ai/health).
+- For x402 users: the circuit breaker fallback (cached wallet verification) handles most dependency failures transparently. A 503 indicates a more severe outage.
+
+---
+
+## Error Handling Patterns
+
+### Recommended Client Logic
+
+<CodeGroup>
+
+```python Python
+import httpx
+import time
+import json
+
+RETRYABLE = {500, 502, 503, 504}
+MAX_RETRIES = 3
+
+def call_limitguard(endpoint: str, payload: dict, api_key: str) -> dict:
+    headers = {
+        "X-API-Key": api_key,
+        "Content-Type": "application/json",
+    }
+
+    for attempt in range(MAX_RETRIES):
+        response = httpx.post(
+            f"https://api.limitguard.ai{endpoint}",
+            headers=headers,
+            json=payload,
+            timeout=10.0,
+        )
+
+        # Success
+        if response.status_code in (200, 201):
+            return response.json()
+
+        error = response.json()
+
+        # Rate limited — respect Retry-After
+        if response.status_code == 429:
+            wait = int(response.headers.get("Retry-After", 60))
+            print(f"Rate limited. Waiting {wait}s...")
+            time.sleep(wait)
+            continue
+
+        # Transient server error — exponential backoff
+        if response.status_code in RETRYABLE:
+            wait = 2 ** attempt
+            print(f"Server error ({response.status_code}). Retrying in {wait}s...")
+            time.sleep(wait)
+            continue
+
+        # Validation error — surface all field errors
+        if response.status_code == 422:
+            errors = error.get("detail", [])
+            if isinstance(errors, list):
+                for err in errors:
+                    print(f"  Field '{err['field']}': {err['message']}")
+            raise ValueError(f"Validation failed: {errors}")
+
+        # Payment required (x402) — handle separately
+        if response.status_code == 402:
+            raise PaymentRequiredError(error)
+
+        # Non-retryable client error
+        raise LimitGuardError(
+            status=response.status_code,
+            title=error.get("title"),
+            detail=error.get("detail"),
+        )
+
+    raise LimitGuardError(status=429, title="Max retries exceeded", detail=None)
+
+
+class LimitGuardError(Exception):
+    def __init__(self, status: int, title: str, detail):
+        self.status = status
+        self.title = title
+        self.detail = detail
+        super().__init__(f"HTTP {status}: {title} — {detail}")
+
+
+class PaymentRequiredError(Exception):
+    def __init__(self, body: dict):
+        self.accepts = body.get("accepts", [])
+        super().__init__("Payment required (x402)")
+```
+
+```javascript JavaScript
+const RETRYABLE = new Set([500, 502, 503, 504]);
+const MAX_RETRIES = 3;
+
+async function callLimitGuard(endpoint, payload, apiKey) {
+  const headers = {
+    "X-API-Key": apiKey,
+    "Content-Type": "application/json",
+  };
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const response = await fetch(`https://api.limitguard.ai${endpoint}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    // Success
+    if (response.status === 200 || response.status === 201) {
+      return response.json();
+    }
+
+    const error = await response.json();
+
+    // Rate limited — respect Retry-After
+    if (response.status === 429) {
+      const wait = parseInt(response.headers.get("Retry-After") ?? "60", 10);
+      console.log(`Rate limited. Waiting ${wait}s...`);
+      await sleep(wait * 1000);
+      continue;
+    }
+
+    // Transient server error — exponential backoff
+    if (RETRYABLE.has(response.status)) {
+      const wait = Math.pow(2, attempt);
+      console.log(`Server error (${response.status}). Retrying in ${wait}s...`);
+      await sleep(wait * 1000);
+      continue;
+    }
+
+    // Validation error — surface all field errors
+    if (response.status === 422) {
+      const errors = Array.isArray(error.detail) ? error.detail : [];
+      errors.forEach(({ field, message }) => {
+        console.error(`  Field '${field}': ${message}`);
+      });
+      throw Object.assign(new Error("Validation failed"), { errors });
+    }
+
+    // Payment required (x402)
+    if (response.status === 402) {
+      throw Object.assign(new Error("Payment required (x402)"), {
+        accepts: error.accepts ?? [],
+      });
+    }
+
+    // Non-retryable client error
+    throw Object.assign(new Error(`HTTP ${response.status}: ${error.title}`), {
+      status: response.status,
+      detail: error.detail,
+    });
+  }
+
+  throw new Error("Max retries exceeded");
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+```
+
+```bash curl
+# Check status code and handle errors in shell scripts
+
+response=$(curl -s -w "\n%{http_code}" -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_name": "Acme Corp BV", "country": "NL"}')
+
+http_code=$(echo "$response" | tail -1)
+body=$(echo "$response" | head -1)
+
+case $http_code in
+  200|201)
+    echo "Success: $body"
+    ;;
+  401)
+    echo "Error: Invalid API key. Check X-API-Key header."
+    ;;
+  422)
+    echo "Validation error: $(echo $body | jq '.detail')"
+    ;;
+  429)
+    retry_after=$(curl -s -I https://api.limitguard.ai/v1/entity/check | grep -i retry-after | awk '{print $2}')
+    echo "Rate limited. Retry after ${retry_after}s"
+    ;;
+  5*)
+    echo "Server error $http_code — retry with backoff"
+    ;;
+  *)
+    echo "Unexpected status $http_code: $body"
+    ;;
+esac
+```
+
+</CodeGroup>
+
+### x402 Auto-Payment Handler
+
+For AI agents that need to handle 402 responses automatically:
+
+<CodeGroup>
+
+```python Python
+import httpx
+import base64
+import json
+import secrets
+import time
+from eth_account import Account
+from eth_account.messages import encode_typed_data
+
+def call_with_x402(
+    endpoint: str,
+    payload: dict,
+    sender_key: str,
+    chain_id: str = "eip155:8453",
+) -> dict:
+    """Make an API call, automatically handling x402 payment if required."""
+
+    url = f"https://api.limitguard.ai{endpoint}"
+
+    # First attempt — no payment
+    response = httpx.post(url, json=payload, timeout=10.0)
+
+    if response.status_code != 402:
+        response.raise_for_status()
+        return response.json()
+
+    # Parse payment requirements
+    requirements = response.json()
+    accepted = next(
+        (a for a in requirements["accepts"] if a["chainId"] == chain_id),
+        None,
+    )
+    if not accepted:
+        raise ValueError(f"No accepted payment option for chain {chain_id}")
+
+    # Build payment
+    x_payment = build_evm_payment(
+        chain_id=chain_id,
+        amount=int(accepted["amount"]),
+        sender_key=sender_key,
+        recipient=accepted["recipient"],
+        usdc_address=accepted["contractAddress"],
+    )
+
+    # Retry with payment
+    paid_response = httpx.post(
+        url,
+        headers={"X-PAYMENT": x_payment, "Content-Type": "application/json"},
+        json=payload,
+        timeout=10.0,
+    )
+    paid_response.raise_for_status()
+    return paid_response.json()
+
+
+def build_evm_payment(chain_id, amount, sender_key, recipient, usdc_address):
+    sender = Account.from_key(sender_key).address
+    chain_num = int(chain_id.split(":")[1])
+    nonce = "0x" + secrets.token_hex(32)
+    now = int(time.time())
+
+    domain = {"name": "USD Coin", "version": "2", "chainId": chain_num, "verifyingContract": usdc_address}
+    message = {"from": sender, "to": recipient, "value": amount, "validAfter": now - 10, "validBefore": now + 300, "nonce": bytes.fromhex(nonce[2:])}
+    types = {
+        "EIP712Domain": [{"name": "name", "type": "string"}, {"name": "version", "type": "string"}, {"name": "chainId", "type": "uint256"}, {"name": "verifyingContract", "type": "address"}],
+        "TransferWithAuthorization": [{"name": "from", "type": "address"}, {"name": "to", "type": "address"}, {"name": "value", "type": "uint256"}, {"name": "validAfter", "type": "uint256"}, {"name": "validBefore", "type": "uint256"}, {"name": "nonce", "type": "bytes32"}],
+    }
+    signed = Account.sign_message(encode_typed_data(domain, types, "TransferWithAuthorization", message), private_key=sender_key)
+    payload = {"chainId": chain_id, "amount": str(amount), "sender": sender, "recipient": recipient, "nonce": nonce, "signature": signed.signature.hex(), "validAfter": now - 10, "validBefore": now + 300}
+    return base64.b64encode(json.dumps(payload).encode()).decode()
+```
+
+```javascript JavaScript
+import { ethers } from "ethers";
+
+async function callWithX402(endpoint, payload, signer, chainId = "eip155:8453") {
+  const url = `https://api.limitguard.ai${endpoint}`;
+
+  // First attempt — no payment
+  let response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status !== 402) {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  // Parse payment requirements
+  const requirements = await response.json();
+  const accepted = requirements.accepts.find((a) => a.chainId === chainId);
+  if (!accepted) throw new Error(`No accepted payment option for chain ${chainId}`);
+
+  // Build payment
+  const xPayment = await buildEvmPayment(
+    chainId,
+    parseInt(accepted.amount, 10),
+    signer,
+    accepted.recipient,
+    accepted.contractAddress,
+  );
+
+  // Retry with payment
+  response = await fetch(url, {
+    method: "POST",
+    headers: { "X-PAYMENT": xPayment, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error(`Payment rejected: HTTP ${response.status}`);
+  return response.json();
+}
+
+async function buildEvmPayment(chainId, amount, signer, recipient, usdcAddress) {
+  const chainNum = parseInt(chainId.split(":")[1]);
+  const nonce = "0x" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const now = Math.floor(Date.now() / 1000);
+
+  const domain = { name: "USD Coin", version: "2", chainId: chainNum, verifyingContract: usdcAddress };
+  const types = { TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" }, { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }] };
+  const message = { from: signer.address, to: recipient, value: amount, validAfter: now - 10, validBefore: now + 300, nonce };
+
+  const signature = await signer.signTypedData(domain, types, message);
+  const payloadObj = { chainId, amount: String(amount), sender: signer.address, recipient, nonce, signature, validAfter: now - 10, validBefore: now + 300 };
+  return btoa(JSON.stringify(payloadObj));
+}
+```
+
+</CodeGroup>
+
+---
+
+## Debugging Checklist
+
+<AccordionGroup>
+  <Accordion title="Getting 401 even with a valid key?">
+    - Confirm the header name is exactly `X-API-Key` (capital X, capital A, capital K)
+    - Confirm the key value starts with `lg_live_` or `lg_test_`
+    - Check for leading/trailing whitespace in the header value
+    - Verify the key has not been revoked — create a new one at `POST /v1/keys/create`
+  </Accordion>
+
+  <Accordion title="Getting 422 but my JSON looks correct?">
+    - Check that `country` is exactly 2 uppercase characters: `"NL"` not `"nl"` or `"Netherlands"`
+    - Check that `entity_name` is at least 2 characters
+    - For `kvk_number`: digits only, exactly 8 characters, as a string: `"12345678"` not `12345678`
+    - For `iban`: strip all spaces before sending
+    - The `detail` array in the response will list every failing field — read all of them before retrying
+  </Accordion>
+
+  <Accordion title="Getting 403 but my key is valid?">
+    - Run `GET /v1/usage/summary` with your key to see your current tier
+    - Check the [pricing page](/pricing) for which endpoints are available on your tier
+    - `/v1/kyb/check`, `/v1/compliance/*`, and enhanced quality tier require `pro` or higher
+  </Accordion>
+
+  <Accordion title="x402 payment keeps returning 402?">
+    - Confirm `validBefore` is at least 60 seconds in the future (use `now + 300`)
+    - Confirm `chainId` in the payment payload exactly matches the one from the 402 response
+    - Confirm `recipient` matches — do not substitute your own address
+    - Confirm `amount` matches or exceeds the required amount
+    - Generate a new random nonce for every attempt — do not reuse
+    - Confirm the USDC contract address matches the network (Base Mainnet vs Sepolia differ)
+  </Accordion>
+
+  <Accordion title="Intermittent 500 errors on entity checks?">
+    - 500 on entity checks is usually a transient timeout in a data source (e.g., KVK API slow response)
+    - Retry up to 3 times with exponential backoff: 1s, 2s, 4s
+    - If the error persists, try `X-Response-Quality: cached` to bypass live source queries
+    - Include the `Request ID` from the error body when contacting support
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Free Endpoints (Never Error on Auth)
+
+These endpoints always return 200 and never require authentication or payment. They will not return 401, 402, or 403:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | API health and version |
+| `POST /v1/keys/create` | Self-service key provisioning |
+| `GET /.well-known/x402.json` | x402 payment discovery |
+| `GET /.well-known/agent.json` | A2A agent card |
+| `GET /.well-known/mcp.json` | MCP manifest |
+| `GET /v1/self-verify` | LimitGuard's own trust score |
+| `GET /v1/methodology` | Scoring methodology |
+| `GET /v1/badge/{entity_id}` | SVG trust badge |
+| `GET /llms.txt` | LLM-readable API summary |
+
+---
+
+## Further Reading
+
+<CardGroup cols={2}>
+  <Card title="Rate Limits" icon="gauge" href="/guides/rate-limits">
+    Per-tier limits, burst handling, and quota management
+  </Card>
+  <Card title="x402 Protocol" icon="credit-card" href="/x402-protocol">
+    Full x402 implementation guide with EVM and Solana examples
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    API keys, sandbox mode, and key management
+  </Card>
+  <Card title="Sandbox" icon="flask" href="/sandbox">
+    Test all error scenarios for free without quota
+  </Card>
+</CardGroup>

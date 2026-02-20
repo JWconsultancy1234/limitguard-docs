@@ -1,0 +1,161 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "LimitGuard",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#10B981",
+    "light": "#34D399",
+    "dark": "#059669",
+    "anchors": {
+      "from": "#10B981",
+      "to": "#059669"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "API Status",
+      "url": "https://api.limitguard.ai/health"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get API Key",
+    "url": "https://api.limitguard.ai/v1/keys/create"
+  },
+  "anchors": [
+    {
+      "name": "API Reference",
+      "icon": "code",
+      "url": "/api-reference"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/JWconsultancy1234/limitguard-docs"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "authentication",
+        "sandbox"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "pricing",
+        "x402-protocol",
+        "discovery"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "guides/errors",
+        "guides/rate-limits",
+        "guides/webhooks",
+        "guides/trust-architecture",
+        "guides/ai-agent-integration"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/introduction"
+      ]
+    },
+    {
+      "group": "Core Trust Intelligence",
+      "pages": [
+        "api-reference/endpoint/post-v1-entity-check",
+        "api-reference/endpoint/post-v1-risk-score",
+        "api-reference/endpoint/post-v1-kyb-check"
+      ]
+    },
+    {
+      "group": "Reputation",
+      "pages": [
+        "api-reference/endpoint/post-v1-reputation-score",
+        "api-reference/endpoint/get-v1-reputation-history-entity_hash"
+      ]
+    },
+    {
+      "group": "Compliance",
+      "pages": [
+        "api-reference/endpoint/get-v1-compliance-alerts",
+        "api-reference/endpoint/get-v1-compliance-sources",
+        "api-reference/endpoint/post-v1-compliance-subscribe",
+        "api-reference/endpoint/get-v1-compliance-readiness-entity_id",
+        "api-reference/endpoint/get-v1-compliance-report-entity_id"
+      ]
+    },
+    {
+      "group": "Financial & Treasury",
+      "pages": [
+        "api-reference/endpoint/get-v1-wallet-balance",
+        "api-reference/endpoint/get-v1-financial-health",
+        "api-reference/endpoint/get-v1-treasury-balance",
+        "api-reference/endpoint/get-v1-treasury-settlements",
+        "api-reference/endpoint/get-v1-treasury-revenue-agent_id"
+      ]
+    },
+    {
+      "group": "API Keys & Usage",
+      "pages": [
+        "api-reference/endpoint/post-v1-keys-create",
+        "api-reference/endpoint/get-v1-usage-summary",
+        "api-reference/endpoint/get-v1-usage-endpoints",
+        "api-reference/endpoint/get-v1-usage"
+      ]
+    },
+    {
+      "group": "Webhooks",
+      "pages": [
+        "api-reference/endpoint/post-v1-webhooks",
+        "api-reference/endpoint/get-v1-webhooks",
+        "api-reference/endpoint/delete-v1-webhooks-webhook_id",
+        "api-reference/endpoint/post-v1-webhooks-webhook_id-test"
+      ]
+    },
+    {
+      "group": "Changelog",
+      "pages": [
+        "changelog/2026-02-20"
+      ]
+    }
+  ],
+  "openapi": "api-reference/openapi.json",
+  "api": {
+    "baseUrl": "https://api.limitguard.ai",
+    "auth": {
+      "method": "key",
+      "name": "X-API-Key"
+    },
+    "playground": {
+      "mode": "simple"
+    }
+  },
+  "footerSocials": {
+    "github": "https://github.com/JWconsultancy1234/limitguard-docs",
+    "website": "https://limitguard.ai"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
+  },
+  "search": {
+    "prompt": "Search LimitGuard docs..."
+  },
+  "metadata": {
+    "og:site_name": "LimitGuard Documentation",
+    "og:description": "Trust Intelligence API for the Agent Economy. Real-time entity verification and risk scoring.",
+    "twitter:site": "@limitguard"
+  }
+}

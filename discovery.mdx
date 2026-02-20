@@ -1,0 +1,144 @@
+---
+title: "Discovery"
+description: "Machine-readable discovery for AI agents — MCP, A2A, x402, and llms.txt"
+---
+
+LimitGuard publishes machine-readable discovery files for three AI agent protocols. All discovery endpoints are **free and require no authentication**.
+
+## Discovery Endpoints
+
+| Endpoint | Protocol | Purpose |
+|----------|----------|---------|
+| `GET /.well-known/x402.json` | x402 Bazaar | AI marketplace service listing with pricing |
+| `GET /.well-known/agent.json` | A2A (Agent-to-Agent) | Agent Card for capability discovery |
+| `GET /.well-known/mcp.json` | MCP (Model Context Protocol) | Tool manifest for LLM agents |
+| `GET /.well-known/security.txt` | RFC 9116 | Security contact information |
+| `GET /llms.txt` | llms.txt | Concise LLM-readable API summary |
+| `GET /llms-full.txt` | llms.txt | Full LLM-readable API reference |
+
+<Note>
+All `/.well-known/*` requests bypass x402 payment middleware completely — no payment or API key needed.
+</Note>
+
+## x402 Bazaar Listing
+
+Enables AI agents to discover available endpoints and their payment requirements automatically.
+
+```bash
+curl https://api.limitguard.ai/.well-known/x402.json
+```
+
+```json Response
+{
+  "name": "LimitGuard Trust Intelligence API",
+  "description": "Entity verification and risk scoring for EU businesses",
+  "endpoints": [
+    {
+      "path": "/v1/entity/check",
+      "method": "POST",
+      "price_usdc": "0.05",
+      "chain": "eip155:8453",
+      "currency": "USDC"
+    }
+  ],
+  "payment_methods": [
+    {"type": "x402", "version": "2"},
+    {"type": "api_key"}
+  ]
+}
+```
+
+Also available at `/v1/sales/listing` for the same data.
+
+## A2A Agent Card
+
+Google's Agent-to-Agent (A2A) protocol for agent capability discovery.
+
+```bash
+curl https://api.limitguard.ai/.well-known/agent.json
+```
+
+Returns capabilities, skills, and how to invoke LimitGuard as an A2A agent. Other agents can discover what LimitGuard can do and how to interact with it programmatically.
+
+## MCP Manifest
+
+Model Context Protocol tools for LLM agents (Claude, GPT-4, etc.).
+
+```bash
+curl https://api.limitguard.ai/.well-known/mcp.json
+```
+
+Returns tool definitions that LLM agents can use to call LimitGuard endpoints as native tools. See the [AI Agent Integration guide](/guides/ai-agent-integration) for usage examples.
+
+## llms.txt
+
+Standard machine-readable format for LLM consumption.
+
+```bash
+# Concise summary for quick context loading
+curl https://api.limitguard.ai/llms.txt
+
+# Full reference with all endpoints, pricing, and examples
+curl https://api.limitguard.ai/llms-full.txt
+```
+
+## Cross-Sell Recommendations
+
+AI agents calling one endpoint can discover complementary services:
+
+```bash
+curl "https://api.limitguard.ai/v1/sales/recommendations?current_endpoint=/v1/risk/score&trust_score=45"
+```
+
+Returns suggestions like "low risk score -> consider full entity check for more detail".
+
+## Integration Example
+
+An AI agent discovering and using LimitGuard autonomously:
+
+<CodeGroup>
+
+```python Python
+import httpx
+
+# Step 1: Discover capabilities
+listing = httpx.get("https://api.limitguard.ai/.well-known/x402.json").json()
+entity_check = next(e for e in listing["endpoints"] if e["path"] == "/v1/entity/check")
+
+# Step 2: Check price
+price_usdc = float(entity_check["price_usdc"])  # 0.05
+
+# Step 3: Build x402 payment and call
+from my_wallet import build_x402_payment
+x_payment = build_x402_payment(amount=int(price_usdc * 1_000_000))
+
+response = httpx.post(
+    "https://api.limitguard.ai/v1/entity/check",
+    headers={"X-PAYMENT": x_payment},
+    json={"entity_name": "Acme Corp BV", "country": "NL"},
+)
+print(response.json()["trust_score"])  # 87
+```
+
+```javascript JavaScript
+// Step 1: Discover capabilities
+const listing = await fetch("https://api.limitguard.ai/.well-known/x402.json")
+  .then((r) => r.json());
+const entityCheck = listing.endpoints.find((e) => e.path === "/v1/entity/check");
+
+// Step 2: Check price
+const priceUsdc = parseFloat(entityCheck.price_usdc); // 0.05
+
+// Step 3: Build x402 payment and call
+const xPayment = await buildX402Payment(priceUsdc * 1_000_000);
+
+const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
+  method: "POST",
+  headers: { "X-PAYMENT": xPayment, "Content-Type": "application/json" },
+  body: JSON.stringify({ entity_name: "Acme Corp BV", country: "NL" }),
+});
+const result = await response.json();
+console.log(result.trust_score); // 87
+```
+
+</CodeGroup>

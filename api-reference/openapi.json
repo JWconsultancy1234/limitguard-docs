@@ -1,0 +1,5414 @@
+2026-02-20 21:06:00 [warning  ] encryption_key_generated_dev   msg='Using ephemeral encryption key. Set LIMITGUARD_ENCRYPTION_KEY in production.'
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LimitGuard.ai",
+    "description": "Trust Intelligence API - Entity verification and risk scoring",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entity/check": {
+      "post": {
+        "summary": "Entity Check",
+        "description": "Full entity trust check.\n\nTriggers all available data sources based on provided identifiers,\ncomputes a trust score, assigns a cluster, and returns a recommendation.\n\nProvide at least one identifier: kvk_number, cbe_number, domain, iban, or vat_number.",
+        "operationId": "entity_check_v1_entity_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/risk/score": {
+      "post": {
+        "summary": "Risk Score",
+        "description": "Quick risk assessment using country risk + sanctions only.\n\nFaster than /entity/check (2 sources vs 8). Returns risk_score\nwhere 0 = lowest risk, 100 = highest risk.",
+        "operationId": "risk_score_v1_risk_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/keys/create": {
+      "post": {
+        "summary": "Create Key",
+        "description": "Create a new API key for self-service provisioning.\n\nReturns the plaintext key exactly once. The key cannot be retrieved\nafter this response - only a SHA-256 hash is stored.",
+        "operationId": "create_key_v1_keys_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/usage/summary": {
+      "get": {
+        "summary": "Get Usage Summary",
+        "description": "Return aggregated usage for the authenticated API key.",
+        "operationId": "get_usage_summary_v1_usage_summary_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(day|week|month)$",
+              "default": "day",
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/usage/endpoints": {
+      "get": {
+        "summary": "Get Endpoint Counts",
+        "description": "Return per-endpoint call counts for the authenticated API key.",
+        "operationId": "get_endpoint_counts_v1_usage_endpoints_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Get Endpoint Counts V1 Usage Endpoints Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/usage": {
+      "get": {
+        "summary": "Get Customer Usage",
+        "description": "Return customer usage analytics for the authenticated API key.\n\nIncludes quota tracking, call statistics, performance metrics, and cost breakdown.\nRequires API key authentication.\n\nArgs:\n    period: Time period for usage aggregation (default: current_month)\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    CustomerUsageResponse with complete usage data",
+        "operationId": "get_customer_usage_v1_usage_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UsagePeriod",
+              "default": "current_month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerUsageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audit/trail": {
+      "get": {
+        "summary": "Get Audit Trail",
+        "description": "Return recent audit trail entries, filtered by tenant.",
+        "operationId": "get_audit_trail_v1_audit_trail_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Audit Trail V1 Audit Trail Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audit/verify": {
+      "get": {
+        "summary": "Verify Audit Chain",
+        "description": "Verify audit trail hash chain integrity.",
+        "operationId": "verify_audit_chain_v1_audit_verify_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Verify Audit Chain V1 Audit Verify Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/audit/query": {
+      "get": {
+        "summary": "Query Audit Trail",
+        "description": "Query persistent audit trail entries with filters (DYN-343).",
+        "operationId": "query_audit_trail_v1_audit_query_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Query Audit Trail V1 Audit Query Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audit/sanctions": {
+      "get": {
+        "summary": "Query Sanctions Decisions",
+        "description": "Query sanctions decision audit trail (DYN-306).",
+        "operationId": "query_sanctions_decisions_v1_audit_sanctions_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_hash",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Hash"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "decision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Decision"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "fmt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Response format: json or csv",
+              "title": "Fmt"
+            },
+            "description": "Response format: json or csv"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks": {
+      "get": {
+        "summary": "List Webhooks",
+        "description": "List all active webhook registrations.",
+        "operationId": "list_webhooks_v1_webhooks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Webhooks V1 Webhooks Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Register Webhook",
+        "description": "Register a new webhook endpoint. URL must use HTTPS.",
+        "operationId": "register_webhook_v1_webhooks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/webhooks/{webhook_id}": {
+      "delete": {
+        "summary": "Delete Webhook",
+        "description": "Remove a webhook registration.",
+        "operationId": "delete_webhook_v1_webhooks__webhook_id__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "webhook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Webhook Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{webhook_id}/test": {
+      "post": {
+        "summary": "Test Webhook",
+        "description": "Send a test event to a webhook endpoint.",
+        "operationId": "test_webhook_v1_webhooks__webhook_id__test_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "webhook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Webhook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Test Webhook V1 Webhooks  Webhook Id  Test Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/data/purge": {
+      "delete": {
+        "summary": "Purge Entity Data",
+        "description": "Right to erasure (GDPR Art. 17): delete all data for an entity.",
+        "operationId": "purge_entity_data_v1_data_purge_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErasureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErasureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/data/retention": {
+      "get": {
+        "summary": "Get Retention Policies",
+        "description": "View all active data retention policies.",
+        "operationId": "get_retention_policies_v1_data_retention_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RetentionPolicy"
+                  },
+                  "type": "array",
+                  "title": "Response Get Retention Policies V1 Data Retention Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/data/inventory": {
+      "get": {
+        "summary": "Get Data Inventory",
+        "description": "Data inventory for GDPR Art. 30 register of processing activities.",
+        "operationId": "get_data_inventory_v1_data_inventory_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DataInventoryItem"
+                  },
+                  "type": "array",
+                  "title": "Response Get Data Inventory V1 Data Inventory Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/data/retention/enforce": {
+      "post": {
+        "summary": "Enforce Retention",
+        "description": "Trigger retention cleanup (admin). Deletes expired records per policy.",
+        "operationId": "enforce_retention_v1_data_retention_enforce_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Enforce Retention V1 Data Retention Enforce Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/retention/run": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Trigger Retention Cleanup",
+        "description": "Manually trigger retention cleanup (deletes expired records).",
+        "operationId": "trigger_retention_cleanup_v1_admin_retention_run_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRunResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/retention/dry-run": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Preview Retention Cleanup",
+        "description": "Preview retention cleanup without deleting anything.",
+        "operationId": "preview_retention_cleanup_v1_admin_retention_dry_run_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionRunResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/retention/status": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Retention Status",
+        "description": "Get last retention run status.",
+        "operationId": "get_retention_status_v1_admin_retention_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Retention Status V1 Admin Retention Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/badge/{entity_id}.json": {
+      "get": {
+        "summary": "Get Badge Json",
+        "description": "Return JSON badge data for entity.\n\nPublic endpoint (no auth) with CORS headers.\n\nArgs:\n    entity_id: Entity identifier\n\nReturns:\n    BadgeData with trust score and metadata",
+        "operationId": "get_badge_json_v1_badge__entity_id__json_get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadgeData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/badge/{entity_id}": {
+      "get": {
+        "summary": "Get Badge Svg",
+        "description": "Return SVG badge for entity.\n\nPublic endpoint (no auth) for cross-origin embedding.\nIncludes CORS headers and cache control.\n\nArgs:\n    entity_id: Entity identifier (email, domain, wallet)\n    variant: Badge display variant (score, level, shield)\n    theme: Visual theme (light, dark)\n\nReturns:\n    SVG image with trust score/level",
+        "operationId": "get_badge_svg_v1_badge__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          },
+          {
+            "name": "variant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/BadgeVariant",
+              "default": "score"
+            }
+          },
+          {
+            "name": "theme",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/BadgeTheme",
+              "default": "light"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/verify/{entity_id}": {
+      "get": {
+        "summary": "Get Verification Data",
+        "description": "Return verification page data for entity.\n\nPublic endpoint (no auth) with CORS headers.\nReturns extended verification details beyond badge data.\n\nArgs:\n    entity_id: Entity identifier\n\nReturns:\n    VerificationResponse with detailed trust data",
+        "operationId": "get_verification_data_v1_verify__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revenue/breakdown": {
+      "get": {
+        "tags": [
+          "Revenue"
+        ],
+        "summary": "Get Revenue Breakdown",
+        "description": "Return multi-dimensional revenue breakdown.\n\nAggregates revenue by channel (x402, api_key, stripe), endpoint, and tier.\nIncludes COGS and gross margin calculations.\n\nRequires API key authentication.\n\nArgs:\n    period: Time period for aggregation (default: current_month)\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    RevenueBreakdown with complete financial analytics",
+        "operationId": "get_revenue_breakdown_v1_revenue_breakdown_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(current_month|previous_month|last_7_days|last_30_days)$",
+              "description": "Aggregation period",
+              "default": "current_month",
+              "title": "Period"
+            },
+            "description": "Aggregation period"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueBreakdown"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revenue/customers": {
+      "get": {
+        "tags": [
+          "Revenue"
+        ],
+        "summary": "Get Customer Revenues",
+        "description": "Return per-customer revenue attribution.\n\nLists revenue attributed to each customer (API key) in the specified period.\n\nRequires API key authentication.\n\nArgs:\n    period: Time period for aggregation (default: current_month)\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    List of CustomerRevenue objects",
+        "operationId": "get_customer_revenues_v1_revenue_customers_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(current_month|previous_month|last_7_days|last_30_days)$",
+              "description": "Aggregation period",
+              "default": "current_month",
+              "title": "Period"
+            },
+            "description": "Aggregation period"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerRevenue"
+                  },
+                  "title": "Response Get Customer Revenues V1 Revenue Customers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revenue/cogs": {
+      "get": {
+        "tags": [
+          "Revenue"
+        ],
+        "summary": "Get Cogs Summary",
+        "description": "Return COGS summary per external API.\n\nLists cost of goods sold for each external API (OpenSanctions, KVK, etc.).\nAll-time aggregation.\n\nRequires API key authentication.\n\nArgs:\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    List of COGSEntry objects",
+        "operationId": "get_cogs_summary_v1_revenue_cogs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/COGSEntry"
+                  },
+                  "type": "array",
+                  "title": "Response Get Cogs Summary V1 Revenue Cogs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/security/status": {
+      "get": {
+        "summary": "Get Security Status",
+        "description": "Get security status including encryption and isolation policies.\n\nReturns:\n    Security status with encryption config and RLS policy",
+        "operationId": "get_security_status_v1_admin_security_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Security Status V1 Admin Security Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/self-verify": {
+      "get": {
+        "summary": "Self Verify",
+        "description": "Run LimitGuard through its own trust verification.\n\nPublic endpoint (no auth) - transparency is the point.\nIncludes CORS headers for embedding.\n\nReturns:\n    SelfVerificationResult with trust score, signals, and methodology",
+        "operationId": "self_verify_v1_self_verify_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfVerificationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/methodology": {
+      "get": {
+        "summary": "Get Methodology",
+        "description": "Get published scoring methodology.\n\nPublic endpoint (no auth) for transparency.\nIncludes CORS headers.\n\nReturns:\n    ScoringMethodology with version, sources, weights, algorithm",
+        "operationId": "get_methodology_v1_methodology_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoringMethodology"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/self-verify/signals": {
+      "get": {
+        "summary": "Get Signals",
+        "description": "Get list of trust signals evaluated.\n\nPublic endpoint (no auth) for transparency.\nIncludes CORS headers.\n\nReturns:\n    List of TrustSignal objects",
+        "operationId": "get_signals_v1_self_verify_signals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrustSignal"
+                  },
+                  "type": "array",
+                  "title": "Response Get Signals V1 Self Verify Signals Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/certificate/issue": {
+      "post": {
+        "summary": "Issue Certificate",
+        "description": "Issue a new trust certificate.\n\nRequires authentication via X-API-Key header.\n\nArgs:\n    request: Certificate issuance request\n    api_key: Validated API key from header\n\nReturns:\n    Issued TrustCertificate with hash and JSON-LD",
+        "operationId": "issue_certificate_v1_certificate_issue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustCertificate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/certificate/{certificate_hash}": {
+      "get": {
+        "summary": "Verify Certificate",
+        "description": "Verify and retrieve a certificate by its hash.\n\nPublic endpoint (no auth required) for certificate embedding and verification.\n\nArgs:\n    certificate_hash: SHA-256 hash of certificate\n\nReturns:\n    CertificateVerifyResponse with verification status\n\nRaises:\n    HTTPException: 404 if certificate not found",
+        "operationId": "verify_certificate_v1_certificate__certificate_hash__get",
+        "parameters": [
+          {
+            "name": "certificate_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Certificate Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/certificate/{certificate_hash}/revoke": {
+      "post": {
+        "summary": "Revoke Certificate",
+        "description": "Revoke a certificate.\n\nRequires authentication via X-API-Key header.\n\nArgs:\n    certificate_hash: SHA-256 hash of certificate\n    api_key: Validated API key from header\n\nReturns:\n    Success message\n\nRaises:\n    HTTPException: 404 if certificate not found",
+        "operationId": "revoke_certificate_v1_certificate__certificate_hash__revoke_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "certificate_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Certificate Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Revoke Certificate V1 Certificate  Certificate Hash  Revoke Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers/register": {
+      "post": {
+        "summary": "Register Provider",
+        "description": "Register a validation provider.\n\nRequires authentication via X-API-Key header.\n\nArgs:\n    request: Provider registration request\n    api_key: Validated API key from header\n\nReturns:\n    ProviderRegistration with assigned provider_id",
+        "operationId": "register_provider_v1_providers_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderRegistration"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/providers": {
+      "get": {
+        "summary": "List Providers",
+        "description": "List all registered validation providers.\n\nRequires authentication via X-API-Key header.\n\nArgs:\n    api_key: Validated API key from header\n\nReturns:\n    List of ProviderRegistration objects",
+        "operationId": "list_providers_v1_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderRegistration"
+                  },
+                  "type": "array",
+                  "title": "Response List Providers V1 Providers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/providers/{provider_id}": {
+      "get": {
+        "summary": "Get Provider",
+        "description": "Get a single validation provider by ID.\n\nRequires authentication via X-API-Key header.\n\nArgs:\n    provider_id: Provider UUID\n    api_key: Validated API key from header\n\nReturns:\n    ProviderRegistration\n\nRaises:\n    HTTPException: 404 if provider not found",
+        "operationId": "get_provider_v1_providers__provider_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderRegistration"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/privacy": {
+      "get": {
+        "summary": "Get Privacy Policy",
+        "description": "Get privacy policy (public, no auth required).",
+        "operationId": "get_privacy_policy_v1_legal_privacy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/terms": {
+      "get": {
+        "summary": "Get Terms Of Service",
+        "description": "Get terms of service (public, no auth required).",
+        "operationId": "get_terms_of_service_v1_legal_terms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal/dpa": {
+      "get": {
+        "summary": "Get Dpa",
+        "description": "Get Data Processing Agreement (public, no auth required).",
+        "operationId": "get_dpa_v1_legal_dpa_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/legal": {
+      "get": {
+        "summary": "List Legal Documents",
+        "description": "List all legal documents (public, no auth required).",
+        "operationId": "list_legal_documents_v1_legal_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LegalDocument"
+                  },
+                  "type": "array",
+                  "title": "Response List Legal Documents V1 Legal Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scores/{subject}/history": {
+      "get": {
+        "summary": "Get Score History",
+        "description": "Get trust score history for an entity (requires authentication).\n\nArgs:\n    subject: Entity name/domain/wallet address\n    limit: Maximum number of entries to return (default: 50, max: 1000)\n\nReturns:\n    ScoreHistoryResponse with entries and trend analysis",
+        "operationId": "get_score_history_v1_scores__subject__history_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/feedback": {
+      "post": {
+        "summary": "Submit Feedback",
+        "description": "Submit feedback on trust score accuracy (requires authentication).\n\nArgs:\n    request: Feedback details (subject, type, optional comment)\n\nReturns:\n    FeedbackResponse with confirmation",
+        "operationId": "submit_feedback_v1_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/feedback/summary": {
+      "get": {
+        "summary": "Get Feedback Summary",
+        "description": "Get aggregated feedback summary (requires authentication, admin).\n\nReturns:\n    Dictionary with feedback counts by type",
+        "operationId": "get_feedback_summary_v1_admin_feedback_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Feedback Summary V1 Admin Feedback Summary Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/reputation/score": {
+      "post": {
+        "summary": "Reputation Score",
+        "description": "Compute reputation score with trust decay for an entity.",
+        "operationId": "reputation_score_v1_reputation_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReputationScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reputation Score V1 Reputation Score Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/reputation/history/{entity_hash}": {
+      "get": {
+        "summary": "Reputation History",
+        "description": "Get reputation score trend for an entity by hash.\n\nReturns decay trajectory and cluster history.",
+        "operationId": "reputation_history_v1_reputation_history__entity_hash__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reputation History V1 Reputation History  Entity Hash  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/watchlist": {
+      "get": {
+        "summary": "List Watchlist",
+        "description": "List all entities on the watchlist.",
+        "operationId": "list_watchlist_v1_watchlist_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Watchlist V1 Watchlist Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Add To Watchlist",
+        "description": "Add an entity to the watchlist for continuous monitoring.",
+        "operationId": "add_to_watchlist_v1_watchlist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Add To Watchlist V1 Watchlist Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/watchlist/{entity_id}": {
+      "delete": {
+        "summary": "Remove From Watchlist",
+        "description": "Remove an entity from the watchlist.",
+        "operationId": "remove_from_watchlist_v1_watchlist__entity_id__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/financial/health": {
+      "get": {
+        "summary": "Financial Health",
+        "description": "Get overall financial system health status.",
+        "operationId": "financial_health_v1_financial_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletHealth"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/treasury/balance": {
+      "get": {
+        "summary": "Treasury Balance",
+        "description": "Get current USDC treasury balance.",
+        "operationId": "treasury_balance_v1_treasury_balance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreasuryBalance"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/treasury/settlements": {
+      "get": {
+        "summary": "Treasury Settlements",
+        "description": "Query settlement status. Optionally filter by nonce.",
+        "operationId": "treasury_settlements_v1_treasury_settlements_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nonce",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by payment nonce",
+              "title": "Nonce"
+            },
+            "description": "Filter by payment nonce"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Treasury Settlements V1 Treasury Settlements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/treasury/revenue/{agent_id}": {
+      "get": {
+        "summary": "Agent Revenue",
+        "description": "Get revenue attributed to a specific downstream AI agent.",
+        "operationId": "agent_revenue_v1_treasury_revenue__agent_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRevenue"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wallet/balance": {
+      "get": {
+        "summary": "Wallet Balance",
+        "description": "WaaS endpoint: get USDC balance for an ERC-8004 registered agent.\n\nReturns balance data or 404 if agent is not registered.",
+        "operationId": "wallet_balance_v1_wallet_balance_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "ERC-8004 agent identifier",
+              "title": "Agent Id"
+            },
+            "description": "ERC-8004 agent identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Wallet Balance V1 Wallet Balance Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/alerts": {
+      "get": {
+        "summary": "List Alerts",
+        "description": "List regulatory alerts with pagination and filtering.",
+        "operationId": "list_alerts_v1_compliance_alerts_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jurisdiction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by jurisdiction",
+              "title": "Jurisdiction"
+            },
+            "description": "Filter by jurisdiction"
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AlertSeverity"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by severity",
+              "title": "Severity"
+            },
+            "description": "Filter by severity"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Alerts V1 Compliance Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/sources": {
+      "get": {
+        "summary": "List Sources",
+        "description": "List all regulatory sources with health status.",
+        "operationId": "list_sources_v1_compliance_sources_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jurisdiction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jurisdiction"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceSourceStatus"
+                  },
+                  "title": "Response List Sources V1 Compliance Sources Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/subscribe": {
+      "post": {
+        "summary": "Create Subscription",
+        "description": "Create a compliance alert subscription.",
+        "operationId": "create_subscription_v1_compliance_subscribe_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "financial_services"
+              ],
+              "title": "Entity Types"
+            }
+          },
+          {
+            "name": "severity_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/AlertSeverity"
+              },
+              "default": [
+                "critical",
+                "high"
+              ],
+              "title": "Severity Filter"
+            }
+          },
+          {
+            "name": "jurisdictions",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "eu"
+              ],
+              "title": "Jurisdictions"
+            }
+          },
+          {
+            "name": "tier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SubscriptionTier",
+              "default": "basic"
+            }
+          },
+          {
+            "name": "webhook_url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Webhook Url"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSubscription"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/readiness/{entity_id}": {
+      "get": {
+        "summary": "Ai Act Readiness",
+        "description": "Get EU AI Act readiness score for an entity.",
+        "operationId": "ai_act_readiness_v1_compliance_readiness__entity_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          },
+          {
+            "name": "system_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "AI system type (credit_scoring, trust_scoring, etc.)",
+              "default": "trust_scoring",
+              "title": "System Type"
+            },
+            "description": "AI system type (credit_scoring, trust_scoring, etc.)"
+          },
+          {
+            "name": "completed_items",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Completed readiness checklist items",
+              "default": [],
+              "title": "Completed Items"
+            },
+            "description": "Completed readiness checklist items"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessScore"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/report/{entity_id}": {
+      "get": {
+        "summary": "Compliance Report",
+        "description": "Compliance assessment report for an entity.\n\nReturns a comprehensive compliance assessment including EU AI Act readiness,\nregulatory alert summary, and actionable compliance recommendations.\n\nPriced at $0.50 per report via x402 (see ENDPOINT_PRICING).",
+        "operationId": "compliance_report_v1_compliance_report__entity_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Compliance Report V1 Compliance Report  Entity Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales/pricing": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Get Pricing",
+        "description": "Get current dynamic pricing for all endpoints.\n\nReturns demand-adjusted prices with volume discounts applied.",
+        "operationId": "get_pricing_v1_sales_pricing_get",
+        "parameters": [
+          {
+            "name": "monthly_calls",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Caller's monthly usage count",
+              "default": 0,
+              "title": "Monthly Calls"
+            },
+            "description": "Caller's monthly usage count"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Pricing V1 Sales Pricing Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales/pricing/{endpoint_path}": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Get Endpoint Pricing",
+        "description": "Get dynamic pricing for a specific endpoint.\n\nArgs:\n    endpoint_path: API endpoint path (e.g., v1/entity/check)\n    monthly_calls: Caller's monthly usage for volume discount",
+        "operationId": "get_endpoint_pricing_v1_sales_pricing__endpoint_path__get",
+        "parameters": [
+          {
+            "name": "endpoint_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Endpoint Path"
+            }
+          },
+          {
+            "name": "monthly_calls",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Monthly Calls"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Endpoint Pricing V1 Sales Pricing  Endpoint Path  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales/listing": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Get Marketplace Listing",
+        "description": "Get Bazaar-compatible service listing for AI agent discovery.\n\nReturns structured listing that AI agents can parse to discover\navailable endpoints, pricing, and payment methods.",
+        "operationId": "get_marketplace_listing_v1_sales_listing_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Marketplace Listing V1 Sales Listing Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales/recommendations": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Get Recommendations",
+        "description": "Get cross-sell recommendations based on current usage.\n\nAI agents calling one endpoint may benefit from complementary services.\n\nArgs:\n    current_endpoint: The endpoint path currently being used\n    trust_score: Optional trust score for context-aware recommendations",
+        "operationId": "get_recommendations_v1_sales_recommendations_get",
+        "parameters": [
+          {
+            "name": "current_endpoint",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Endpoint the caller is currently using",
+              "title": "Current Endpoint"
+            },
+            "description": "Endpoint the caller is currently using"
+          },
+          {
+            "name": "trust_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trust Score"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Recommendations V1 Sales Recommendations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kyb/check": {
+      "post": {
+        "summary": "Kyb Check",
+        "description": "Full KYB (Know Your Business) verification.\n\nCombines entity trust check with sanctions screening and company\nregistration verification. Returns comprehensive KYB result with\nverification status, risk flags, and compliance recommendations.\n\nPriced at $1.25 per call via x402 (see ENDPOINT_PRICING).",
+        "operationId": "kyb_check_v1_kyb_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KYBCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Kyb Check V1 Kyb Check Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/.well-known/security.txt": {
+      "get": {
+        "summary": "Security Txt",
+        "operationId": "security_txt__well_known_security_txt_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentRevenue": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id",
+            "description": "ERC-8004 agent identifier"
+          },
+          "total_revenue_usdc": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usdc",
+            "description": "Total revenue in USDC"
+          },
+          "call_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Call Count",
+            "description": "Number of paid API calls"
+          },
+          "last_call_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Call At",
+            "description": "Last call timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "total_revenue_usdc",
+          "call_count"
+        ],
+        "title": "AgentRevenue",
+        "description": "Revenue attributed to a downstream AI agent."
+      },
+      "AlertSeverity": {
+        "type": "string",
+        "enum": [
+          "critical",
+          "high",
+          "medium",
+          "low",
+          "informational"
+        ],
+        "title": "AlertSeverity"
+      },
+      "AlertSubscription": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Subscription ID"
+          },
+          "entity_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Types",
+            "description": "Sector filters"
+          },
+          "severity_filter": {
+            "items": {
+              "$ref": "#/components/schemas/AlertSeverity"
+            },
+            "type": "array",
+            "title": "Severity Filter",
+            "description": "Minimum severity to receive"
+          },
+          "jurisdictions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Jurisdictions",
+            "description": "Jurisdiction filters"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/SubscriptionTier",
+            "default": "basic"
+          },
+          "webhook_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Url",
+            "description": "Webhook URL for enterprise tier"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "AlertSubscription",
+        "description": "Subscription to compliance alerts."
+      },
+      "BadgeData": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Entity identifier (email, domain, wallet)"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score 0-100"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Trust level (HIGH, MEDIUM, LOW)"
+          },
+          "cluster": {
+            "type": "string",
+            "title": "Cluster",
+            "description": "Entity cluster classification"
+          },
+          "last_verified": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified",
+            "description": "Last verification timestamp"
+          },
+          "sources_checked": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sources Checked",
+            "description": "Number of sources verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "trust_score",
+          "trust_level",
+          "cluster",
+          "last_verified",
+          "sources_checked"
+        ],
+        "title": "BadgeData",
+        "description": "Badge data returned by /v1/badge/{entity_id}.json endpoint."
+      },
+      "BadgeTheme": {
+        "type": "string",
+        "enum": [
+          "dark",
+          "light"
+        ],
+        "title": "BadgeTheme",
+        "description": "Visual theme for badge rendering."
+      },
+      "BadgeVariant": {
+        "type": "string",
+        "enum": [
+          "score",
+          "level",
+          "shield"
+        ],
+        "title": "BadgeVariant",
+        "description": "Badge display variants."
+      },
+      "COGSEntry": {
+        "properties": {
+          "external_api": {
+            "type": "string",
+            "title": "External Api",
+            "description": "External API name (OpenSanctions, KVK, etc.)"
+          },
+          "cost_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Usd",
+            "description": "Total cost in USD for this API"
+          },
+          "call_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Call Count",
+            "description": "Number of calls to this API"
+          }
+        },
+        "type": "object",
+        "required": [
+          "external_api",
+          "cost_usd",
+          "call_count"
+        ],
+        "title": "COGSEntry",
+        "description": "Cost of Goods Sold entry per external API."
+      },
+      "CategoryResult": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "records_before": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Records Before"
+          },
+          "records_deleted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Records Deleted"
+          },
+          "records_remaining": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Records Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "records_before",
+          "records_deleted",
+          "records_remaining"
+        ],
+        "title": "CategoryResult",
+        "description": "Per-category retention cleanup result."
+      },
+      "CertificateIssueRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "title": "Entity Name",
+            "description": "Name of the entity receiving certificate"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country",
+            "description": "2-character ISO country code"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score 0-100"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Trust level (HIGH, MEDIUM, LOW)"
+          },
+          "valid_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Valid Days",
+            "description": "Certificate validity in days",
+            "default": 365
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country",
+          "trust_score",
+          "trust_level"
+        ],
+        "title": "CertificateIssueRequest",
+        "description": "Request to issue a new trust certificate."
+      },
+      "CertificateVerifyResponse": {
+        "properties": {
+          "certificate": {
+            "$ref": "#/components/schemas/TrustCertificate",
+            "description": "Certificate data"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid",
+            "description": "Whether certificate is currently valid"
+          },
+          "chain_verified": {
+            "type": "boolean",
+            "title": "Chain Verified",
+            "description": "Whether certificate chain is verified"
+          },
+          "issuer_trusted": {
+            "type": "boolean",
+            "title": "Issuer Trusted",
+            "description": "Whether issuer is trusted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "certificate",
+          "valid",
+          "chain_verified",
+          "issuer_trusted"
+        ],
+        "title": "CertificateVerifyResponse",
+        "description": "Response for certificate verification."
+      },
+      "Cluster": {
+        "type": "string",
+        "enum": [
+          "established_eu_enterprise",
+          "established_eu_sme",
+          "verified_startup",
+          "unverified_new",
+          "high_risk_jurisdiction",
+          "sanctions_flagged",
+          "insufficient_data",
+          "mixed_signals"
+        ],
+        "title": "Cluster"
+      },
+      "ComplianceSourceStatus": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "jurisdiction": {
+            "type": "string",
+            "title": "Jurisdiction"
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type"
+          },
+          "circuit_state": {
+            "type": "string",
+            "title": "Circuit State",
+            "default": "closed"
+          },
+          "last_fetch_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fetch At"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id",
+          "name",
+          "jurisdiction",
+          "source_type"
+        ],
+        "title": "ComplianceSourceStatus",
+        "description": "Health status of a regulatory source."
+      },
+      "CustomerRevenue": {
+        "properties": {
+          "api_key_id": {
+            "type": "string",
+            "title": "Api Key Id",
+            "description": "API key hash"
+          },
+          "total_revenue_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usd",
+            "description": "Total revenue from this customer"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/RevenueChannel",
+            "description": "Revenue channel"
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Calls",
+            "description": "Total API calls in period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Period start timestamp"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Period end timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key_id",
+          "total_revenue_usd",
+          "channel",
+          "calls",
+          "period_start",
+          "period_end"
+        ],
+        "title": "CustomerRevenue",
+        "description": "Revenue attributed to a specific customer."
+      },
+      "CustomerUsageResponse": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Usage period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Period start timestamp"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Period end timestamp"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "description": "Customer pricing tier"
+          },
+          "quota": {
+            "$ref": "#/components/schemas/UsageQuota",
+            "description": "Quota information"
+          },
+          "calls": {
+            "$ref": "#/components/schemas/UsageCalls",
+            "description": "Call statistics"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/UsagePerformance",
+            "description": "Performance metrics"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/UsageCost",
+            "description": "Cost breakdown"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "Request tracking ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "period_start",
+          "period_end",
+          "tier",
+          "quota",
+          "calls",
+          "performance",
+          "cost",
+          "request_id"
+        ],
+        "title": "CustomerUsageResponse",
+        "description": "Complete usage response for customer dashboard (DYN-273)."
+      },
+      "DataCategory": {
+        "type": "string",
+        "enum": [
+          "usage_logs",
+          "trust_scores",
+          "audit_trail",
+          "api_keys",
+          "webhook_deliveries"
+        ],
+        "title": "DataCategory"
+      },
+      "DataInventoryItem": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/DataCategory"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "oldest_record": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Record"
+          },
+          "retention_days": {
+            "type": "integer",
+            "title": "Retention Days"
+          },
+          "next_cleanup": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cleanup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "record_count",
+          "retention_days"
+        ],
+        "title": "DataInventoryItem"
+      },
+      "EnhancedCheckHint": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint",
+            "description": "API endpoint for enhanced check"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "description": "deep or extended"
+          },
+          "price_usdc": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Price Usdc",
+            "description": "Cost via x402 payment"
+          },
+          "adds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Adds",
+            "description": "Additional data sources included"
+          },
+          "trigger_reason": {
+            "type": "string",
+            "title": "Trigger Reason",
+            "description": "Why this check was suggested"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "quality",
+          "price_usdc",
+          "adds",
+          "trigger_reason"
+        ],
+        "title": "EnhancedCheckHint",
+        "description": "Upsell hint: suggests a deeper check endpoint when trust is ambiguous."
+      },
+      "EntityCheckRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Entity Name",
+            "description": "Legal entity name"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code"
+          },
+          "kvk_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kvk Number",
+            "description": "Dutch KVK number (8 digits)"
+          },
+          "cbe_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cbe Number",
+            "description": "Belgian CBE number (format: 0XXX.XXX.XXX)"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 253
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain",
+            "description": "Entity website domain"
+          },
+          "iban": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 34
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iban",
+            "description": "IBAN for financial validation"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number",
+            "description": "EU VAT number"
+          },
+          "wallet_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Address",
+            "description": "Crypto wallet address"
+          },
+          "wallet_chain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Chain",
+            "description": "Blockchain (eth, btc)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country"
+        ],
+        "title": "EntityCheckRequest",
+        "description": "Full entity check request - triggers all data sources."
+      },
+      "ErasureRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Entity Name",
+            "description": "Entity to erase"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "GDPR Article 17 request"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name"
+        ],
+        "title": "ErasureRequest"
+      },
+      "ErasureResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "completed"
+          },
+          "categories_purged": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories Purged"
+          },
+          "records_deleted": {
+            "type": "integer",
+            "title": "Records Deleted"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "categories_purged",
+          "records_deleted",
+          "completed_at"
+        ],
+        "title": "ErasureResponse"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "status"
+        ],
+        "title": "ErrorResponse",
+        "description": "RFC 7807 Problem Details response."
+      },
+      "FeedbackRequest": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject",
+            "description": "Entity name/domain/wallet that was scored"
+          },
+          "score_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Entry Id",
+            "description": "Optional: specific score entry to give feedback on"
+          },
+          "feedback_type": {
+            "type": "string",
+            "enum": [
+              "accurate",
+              "too_high",
+              "too_low",
+              "incorrect"
+            ],
+            "title": "Feedback Type"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment",
+            "description": "Optional feedback details"
+          },
+          "reporter_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporter Context",
+            "description": "Optional context about reporter (e.g., 'customer for 2 years')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "feedback_type"
+        ],
+        "title": "FeedbackRequest",
+        "description": "User feedback on trust score accuracy."
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "feedback_id": {
+            "type": "string",
+            "title": "Feedback Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "received"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Thank you for your feedback. It helps us improve trust scores."
+          }
+        },
+        "type": "object",
+        "title": "FeedbackResponse",
+        "description": "Confirmation that feedback was received."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "uptime_seconds": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Uptime Seconds",
+            "description": "Seconds since API started"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "type": "object",
+            "title": "Sources"
+          },
+          "cache_sizes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Cache Sizes",
+            "description": "In-memory cache entry counts by service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "uptime_seconds"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response."
+      },
+      "KYBCheckRequest": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Internal entity identifier"
+          },
+          "registration_number": {
+            "type": "string",
+            "title": "Registration Number",
+            "description": "Company registration number (KVK, CBE, etc.)"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code"
+          },
+          "entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Name",
+            "description": "Legal entity name (optional, used for sanctions)"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number",
+            "description": "VAT number for VIES verification"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain",
+            "description": "Company domain for web presence check"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "registration_number",
+          "country"
+        ],
+        "title": "KYBCheckRequest",
+        "description": "Request model for KYB verification."
+      },
+      "KeyCreateRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "description": "Email address for key owner"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "description": "Pricing tier",
+            "default": "free"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "KeyCreateRequest",
+        "description": "Request to create a new API key."
+      },
+      "KeyCreateResponse": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "Plaintext API key (shown only once)"
+          },
+          "key_id": {
+            "type": "string",
+            "title": "Key Id",
+            "description": "Key identifier (SHA-256 hash prefix)"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "description": "Pricing tier"
+          },
+          "monthly_limit": {
+            "type": "integer",
+            "title": "Monthly Limit",
+            "description": "Monthly request limit for this tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key",
+          "key_id",
+          "tier",
+          "monthly_limit"
+        ],
+        "title": "KeyCreateResponse",
+        "description": "Response after creating a new API key. Plaintext key shown only once."
+      },
+      "LegalDocument": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "privacy_policy",
+              "terms_of_service",
+              "dpa"
+            ],
+            "title": "Document Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Effective Date"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_type",
+          "title",
+          "version",
+          "effective_date",
+          "content",
+          "last_updated"
+        ],
+        "title": "LegalDocument",
+        "description": "Legal document (privacy policy, terms of service, or DPA)."
+      },
+      "ProviderRegistration": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "title": "Provider Id",
+            "description": "Unique provider UUID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Provider name"
+          },
+          "endpoint_url": {
+            "type": "string",
+            "title": "Endpoint Url",
+            "description": "Provider API endpoint URL"
+          },
+          "supported_checks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supported Checks",
+            "description": "List of validation check types supported"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registered At",
+            "description": "Registration timestamp"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Provider status",
+            "default": "active"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Provider trust level",
+            "default": "verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "name",
+          "endpoint_url",
+          "supported_checks",
+          "registered_at"
+        ],
+        "title": "ProviderRegistration",
+        "description": "Validation provider registration."
+      },
+      "ProviderRegistrationRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Provider name"
+          },
+          "endpoint_url": {
+            "type": "string",
+            "title": "Endpoint Url",
+            "description": "Provider API endpoint URL"
+          },
+          "supported_checks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supported Checks",
+            "description": "List of validation check types supported"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "endpoint_url",
+          "supported_checks"
+        ],
+        "title": "ProviderRegistrationRequest",
+        "description": "Request to register a validation provider."
+      },
+      "ReadinessScore": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Entity identifier"
+          },
+          "system_type": {
+            "type": "string",
+            "title": "System Type",
+            "description": "AI system classification"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level",
+            "description": "EU AI Act risk level"
+          },
+          "readiness_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Readiness Score",
+            "description": "Readiness percentage"
+          },
+          "completed_items": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Completed Items"
+          },
+          "total_items": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Items"
+          },
+          "gaps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Gaps",
+            "description": "Missing requirements"
+          },
+          "days_until_enforcement": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Days Until Enforcement"
+          },
+          "urgency": {
+            "type": "string",
+            "title": "Urgency",
+            "description": "normal, high, or critical"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "system_type",
+          "risk_level",
+          "readiness_score",
+          "completed_items",
+          "total_items",
+          "days_until_enforcement",
+          "urgency"
+        ],
+        "title": "ReadinessScore",
+        "description": "EU AI Act compliance readiness assessment."
+      },
+      "Recommendation": {
+        "type": "string",
+        "enum": [
+          "proceed",
+          "review",
+          "enhanced_due_diligence",
+          "block"
+        ],
+        "title": "Recommendation"
+      },
+      "ReputationScoreRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Entity Name"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Latest trust score"
+          },
+          "cluster": {
+            "type": "string",
+            "title": "Cluster",
+            "description": "Current cluster assignment"
+          },
+          "last_verified_at": {
+            "type": "number",
+            "title": "Last Verified At",
+            "description": "Unix timestamp of last verification"
+          },
+          "verification_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Verification Count",
+            "description": "Times entity verified",
+            "default": 1
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id",
+            "description": "ERC-8004 agent ID for verification"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name",
+          "trust_score",
+          "cluster",
+          "last_verified_at"
+        ],
+        "title": "ReputationScoreRequest"
+      },
+      "RetentionPolicy": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/DataCategory"
+          },
+          "retention_days": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Retention Days",
+            "description": "Days to retain (0 = until account deletion)"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "legal_basis": {
+            "type": "string",
+            "title": "Legal Basis",
+            "description": "GDPR article reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "retention_days",
+          "description",
+          "legal_basis"
+        ],
+        "title": "RetentionPolicy"
+      },
+      "RetentionRunResult": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id",
+            "description": "Unique run identifier"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "True if no deletions occurred",
+            "default": false
+          },
+          "results_by_category": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryResult"
+            },
+            "type": "array",
+            "title": "Results By Category"
+          },
+          "total_deleted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Deleted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "completed_at",
+          "results_by_category",
+          "total_deleted"
+        ],
+        "title": "RetentionRunResult",
+        "description": "Complete retention enforcement run result."
+      },
+      "RevenueBreakdown": {
+        "properties": {
+          "total_revenue_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usd",
+            "description": "Total revenue across all channels"
+          },
+          "by_channel": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "By Channel",
+            "description": "Revenue grouped by channel (x402, api_key, stripe)"
+          },
+          "by_endpoint": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "By Endpoint",
+            "description": "Revenue grouped by endpoint"
+          },
+          "by_tier": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "By Tier",
+            "description": "Revenue grouped by customer tier"
+          },
+          "cogs_total_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cogs Total Usd",
+            "description": "Total Cost of Goods Sold"
+          },
+          "gross_margin_usd": {
+            "type": "number",
+            "title": "Gross Margin Usd",
+            "description": "Gross margin (revenue - COGS)"
+          },
+          "gross_margin_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Gross Margin Pct",
+            "description": "Gross margin percentage"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Aggregation period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Period start timestamp"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Period end timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_revenue_usd",
+          "cogs_total_usd",
+          "gross_margin_usd",
+          "gross_margin_pct",
+          "period",
+          "period_start",
+          "period_end"
+        ],
+        "title": "RevenueBreakdown",
+        "description": "Complete revenue breakdown with multi-dimensional aggregation."
+      },
+      "RevenueChannel": {
+        "type": "string",
+        "enum": [
+          "x402",
+          "api_key",
+          "stripe"
+        ],
+        "title": "RevenueChannel",
+        "description": "Revenue attribution channel."
+      },
+      "RiskResponse": {
+        "properties": {
+          "risk_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "description": "Risk score (100 = highest risk)"
+          },
+          "risk_level": {
+            "$ref": "#/components/schemas/TrustLevel"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/Recommendation"
+          },
+          "top_factors": {
+            "items": {
+              "$ref": "#/components/schemas/TopFactor"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Top Factors"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Processing Time Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "risk_score",
+          "risk_level",
+          "recommendation",
+          "top_factors",
+          "processing_time_ms"
+        ],
+        "title": "RiskResponse",
+        "description": "Lighter risk-only response from /v1/risk/score."
+      },
+      "RiskScoreRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Entity Name",
+            "description": "Legal entity name"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country"
+        ],
+        "title": "RiskScoreRequest",
+        "description": "Lighter risk-only request - faster, fewer sources."
+      },
+      "ScoreHistoryEntry": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject",
+            "description": "Entity name/domain/wallet address"
+          },
+          "subject_hash": {
+            "type": "string",
+            "title": "Subject Hash",
+            "description": "SHA-256 hash of subject for privacy"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score at this timestamp"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "high, medium, low, critical"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source of this score",
+            "default": "api_check"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Additional context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "subject_hash",
+          "trust_score",
+          "trust_level"
+        ],
+        "title": "ScoreHistoryEntry",
+        "description": "Single trust score history entry for an entity."
+      },
+      "ScoreHistoryResponse": {
+        "properties": {
+          "subject_hash": {
+            "type": "string",
+            "title": "Subject Hash"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreHistoryEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "total_entries": {
+            "type": "integer",
+            "title": "Total Entries"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "improving",
+              "declining",
+              "stable",
+              "insufficient_data"
+            ],
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject_hash",
+          "entries",
+          "total_entries",
+          "trend"
+        ],
+        "title": "ScoreHistoryResponse",
+        "description": "Trust score history for a subject with trend analysis."
+      },
+      "ScoringMethodology": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Methodology version"
+          },
+          "data_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data Sources",
+            "description": "Data sources consulted"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Weights",
+            "description": "Signal weight configuration"
+          },
+          "algorithm_description": {
+            "type": "string",
+            "title": "Algorithm Description",
+            "description": "High-level algorithm description"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated",
+            "description": "Last methodology update"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "data_sources",
+          "weights",
+          "algorithm_description",
+          "last_updated"
+        ],
+        "title": "ScoringMethodology",
+        "description": "Published scoring methodology for transparency."
+      },
+      "SelfVerificationResult": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "title": "Entity Name",
+            "description": "Entity being verified"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score 0-100"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Trust level (HIGH, MEDIUM, LOW)"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Verified At",
+            "description": "Verification timestamp"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/TrustSignal"
+            },
+            "type": "array",
+            "title": "Signals",
+            "description": "List of trust signals evaluated"
+          },
+          "scoring_methodology_url": {
+            "type": "string",
+            "title": "Scoring Methodology Url",
+            "description": "URL to published scoring methodology"
+          },
+          "on_chain_proof": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Chain Proof",
+            "description": "On-chain verification proof (ERC-8004)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name",
+          "trust_score",
+          "trust_level",
+          "verified_at",
+          "signals",
+          "scoring_methodology_url"
+        ],
+        "title": "SelfVerificationResult",
+        "description": "Result of running LimitGuard through its own trust engine."
+      },
+      "SourceStatus": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "ok, timeout, error, skipped"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "SourceStatus"
+      },
+      "SubscriptionTier": {
+        "type": "string",
+        "enum": [
+          "basic",
+          "pro",
+          "enterprise"
+        ],
+        "title": "SubscriptionTier"
+      },
+      "TopFactor": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Data source name"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal",
+            "description": "What was found"
+          },
+          "impact": {
+            "type": "string",
+            "title": "Impact",
+            "description": "positive, negative, or neutral"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight",
+            "description": "Contribution to score (0-1)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "signal",
+          "impact",
+          "weight"
+        ],
+        "title": "TopFactor"
+      },
+      "TreasuryBalance": {
+        "properties": {
+          "balance_usdc": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Balance Usdc",
+            "description": "USDC balance (human-readable)"
+          },
+          "balance_raw": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Balance Raw",
+            "description": "USDC balance in smallest unit (6 decimals)"
+          },
+          "chain": {
+            "type": "string",
+            "title": "Chain",
+            "description": "Blockchain network",
+            "default": "base"
+          },
+          "wallet_address": {
+            "type": "string",
+            "title": "Wallet Address",
+            "description": "Treasury wallet address"
+          },
+          "frozen": {
+            "type": "boolean",
+            "title": "Frozen",
+            "description": "Emergency freeze active",
+            "default": false
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "balance_usdc",
+          "balance_raw",
+          "wallet_address"
+        ],
+        "title": "TreasuryBalance",
+        "description": "Current treasury USDC holdings."
+      },
+      "TrustCertificate": {
+        "properties": {
+          "certificate_id": {
+            "type": "string",
+            "title": "Certificate Id",
+            "description": "Unique certificate UUID"
+          },
+          "entity_name": {
+            "type": "string",
+            "title": "Entity Name",
+            "description": "Name of certified entity"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "description": "2-character ISO country code"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score 0-100"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Trust level (HIGH, MEDIUM, LOW)"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At",
+            "description": "Certificate issuance timestamp"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "description": "Certificate expiration timestamp"
+          },
+          "certificate_hash": {
+            "type": "string",
+            "title": "Certificate Hash",
+            "description": "SHA-256 hash of certificate content"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer",
+            "description": "Certificate issuer",
+            "default": "LimitGuard.ai"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "description": "Certificate schema version",
+            "default": "1.0"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Certificate status",
+            "default": "active"
+          },
+          "json_ld": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Json Ld",
+            "description": "JSON-LD structured data representation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "certificate_id",
+          "entity_name",
+          "country",
+          "trust_score",
+          "trust_level",
+          "issued_at",
+          "expires_at",
+          "certificate_hash",
+          "json_ld"
+        ],
+        "title": "TrustCertificate",
+        "description": "Trust certificate issued by LimitGuard.ai."
+      },
+      "TrustLevel": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low",
+          "critical"
+        ],
+        "title": "TrustLevel"
+      },
+      "TrustResponse": {
+        "properties": {
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Overall trust score"
+          },
+          "trust_level": {
+            "$ref": "#/components/schemas/TrustLevel"
+          },
+          "cluster": {
+            "$ref": "#/components/schemas/Cluster"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/Recommendation"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Score confidence (0-1)"
+          },
+          "top_factors": {
+            "items": {
+              "$ref": "#/components/schemas/TopFactor"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Top Factors"
+          },
+          "correlations": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Correlations",
+            "description": "Key correlations between signals"
+          },
+          "sources_checked": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sources Checked"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Processing Time Ms"
+          },
+          "enhanced_check_hint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnhancedCheckHint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Suggested deeper check when recommendation is review or edd"
+          },
+          "response_quality": {
+            "type": "string",
+            "title": "Response Quality",
+            "description": "Quality tier used for this response: cached, fresh, or enhanced",
+            "default": "fresh"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "description": "True if result was served from cache (cached tier)",
+            "default": false
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "1.0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trust_score",
+          "trust_level",
+          "cluster",
+          "recommendation",
+          "confidence",
+          "top_factors",
+          "sources_checked",
+          "processing_time_ms"
+        ],
+        "title": "TrustResponse",
+        "description": "Full trust intelligence response from /v1/entity/check."
+      },
+      "TrustSignal": {
+        "properties": {
+          "signal_name": {
+            "type": "string",
+            "title": "Signal Name",
+            "description": "Name of the trust signal"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Signal status (verified, pending, failed)"
+          },
+          "verifiable": {
+            "type": "boolean",
+            "title": "Verifiable",
+            "description": "Whether signal can be independently verified"
+          },
+          "evidence_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Url",
+            "description": "URL to verification evidence"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Human-readable signal description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal_name",
+          "status",
+          "verifiable",
+          "description"
+        ],
+        "title": "TrustSignal",
+        "description": "Individual trust signal verification result."
+      },
+      "UsageCalls": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Total API calls"
+          },
+          "by_endpoint": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Endpoint",
+            "description": "Calls grouped by endpoint"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Status",
+            "description": "Calls grouped by HTTP status code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "UsageCalls",
+        "description": "Call statistics."
+      },
+      "UsageCost": {
+        "properties": {
+          "total_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Usd",
+            "description": "Total cost in USD"
+          },
+          "by_endpoint": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "By Endpoint",
+            "description": "Cost grouped by endpoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_usd"
+        ],
+        "title": "UsageCost",
+        "description": "Cost breakdown."
+      },
+      "UsagePerformance": {
+        "properties": {
+          "avg_response_time_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Avg Response Time Ms",
+            "description": "Average response time in ms"
+          },
+          "p95_response_time_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "P95 Response Time Ms",
+            "description": "95th percentile response time in ms"
+          },
+          "cache_hit_rate": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Cache Hit Rate",
+            "description": "Cache hit rate percentage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avg_response_time_ms",
+          "p95_response_time_ms",
+          "cache_hit_rate"
+        ],
+        "title": "UsagePerformance",
+        "description": "Performance metrics."
+      },
+      "UsagePeriod": {
+        "type": "string",
+        "enum": [
+          "current_month",
+          "previous_month",
+          "last_7_days",
+          "last_30_days"
+        ],
+        "title": "UsagePeriod",
+        "description": "Time period for usage aggregation."
+      },
+      "UsageQuota": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Limit",
+            "description": "Monthly request limit"
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Used",
+            "description": "Requests used in period"
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Remaining",
+            "description": "Remaining requests"
+          },
+          "percent_used": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Percent Used",
+            "description": "Percentage of quota used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limit",
+          "used",
+          "remaining",
+          "percent_used"
+        ],
+        "title": "UsageQuota",
+        "description": "Usage quota information."
+      },
+      "UsageSummary": {
+        "properties": {
+          "total_calls": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Calls",
+            "description": "Total API calls in period"
+          },
+          "total_cost_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Cost Usd",
+            "description": "Total cost in USD"
+          },
+          "avg_latency_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Avg Latency Ms",
+            "description": "Average latency in ms"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Aggregation period (day, week, month)"
+          },
+          "endpoint_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Endpoint Counts",
+            "description": "Calls per endpoint"
+          },
+          "calls_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Calls By Status",
+            "description": "Calls grouped by HTTP status code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_calls",
+          "total_cost_usd",
+          "avg_latency_ms",
+          "period"
+        ],
+        "title": "UsageSummary",
+        "description": "Aggregated usage stats returned by /v1/usage/summary."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerificationResponse": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Entity identifier"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "Trust score 0-100"
+          },
+          "trust_level": {
+            "type": "string",
+            "title": "Trust Level",
+            "description": "Trust level (HIGH, MEDIUM, LOW)"
+          },
+          "cluster": {
+            "type": "string",
+            "title": "Cluster",
+            "description": "Entity cluster classification"
+          },
+          "last_verified": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified",
+            "description": "Last verification timestamp"
+          },
+          "sources_checked": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sources Checked",
+            "description": "Number of sources verified"
+          },
+          "verification_details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Verification Details",
+            "description": "Detailed verification breakdown"
+          },
+          "risk_flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Flags",
+            "description": "Active risk indicators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "trust_score",
+          "trust_level",
+          "cluster",
+          "last_verified",
+          "sources_checked"
+        ],
+        "title": "VerificationResponse",
+        "description": "Extended verification data returned by /v1/verify/{entity_id} endpoint."
+      },
+      "WalletHealth": {
+        "properties": {
+          "treasury_balance_usdc": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Treasury Balance Usdc"
+          },
+          "frozen": {
+            "type": "boolean",
+            "title": "Frozen",
+            "default": false
+          },
+          "pending_settlements": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pending Settlements"
+          },
+          "total_revenue_usdc": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usdc"
+          },
+          "agents_tracked": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Agents Tracked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "treasury_balance_usdc",
+          "pending_settlements",
+          "total_revenue_usdc",
+          "agents_tracked"
+        ],
+        "title": "WalletHealth",
+        "description": "Financial system health status."
+      },
+      "WatchlistAddRequest": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Entity Id"
+          },
+          "entity_name": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Entity Name"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason",
+            "default": ""
+          },
+          "rescore_interval": {
+            "type": "integer",
+            "minimum": 3600.0,
+            "title": "Rescore Interval",
+            "description": "Seconds between rescores",
+            "default": 604800
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "entity_name"
+        ],
+        "title": "WatchlistAddRequest"
+      },
+      "WebhookCreateRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "description": "HTTPS callback URL"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Events",
+            "description": "Event types to subscribe to"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "events"
+        ],
+        "title": "WebhookCreateRequest"
+      },
+      "WebhookEventType": {
+        "type": "string",
+        "enum": [
+          "trust.score.changed",
+          "sanctions.match.new",
+          "trust.level.downgrade",
+          "certificate.expired"
+        ],
+        "title": "WebhookEventType"
+      },
+      "WebhookResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "secret": {
+            "type": "string",
+            "title": "Secret"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "events",
+          "secret",
+          "active",
+          "created_at"
+        ],
+        "title": "WebhookResponse"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  }
+}

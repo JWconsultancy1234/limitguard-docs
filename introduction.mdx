@@ -1,0 +1,128 @@
+---
+title: "Introduction"
+description: "Trust Intelligence API for the Agent Economy"
+---
+
+<img
+  className="block dark:hidden"
+  src="/logo/light.svg"
+  alt="LimitGuard"
+  width="60"
+/>
+<img
+  className="hidden dark:block"
+  src="/logo/dark.svg"
+  alt="LimitGuard"
+  width="60"
+/>
+
+# LimitGuard
+
+**Real-time trust scoring for AI agents, businesses, and transactions.**
+8 data sources. One API call. Verified on-chain.
+
+LimitGuard is a Trust Intelligence API that lets AI agents and developers verify the trustworthiness of any business entity before transacting. We aggregate 8 independent data sources — business registries, sanctions lists, jurisdiction risk, domain intelligence, IBAN validation, VAT verification, wallet screening, and on-chain payment history — into a single trust score.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your first trust score in under 3 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore all 64 endpoints with interactive playground
+  </Card>
+  <Card title="Sandbox" icon="flask" href="/sandbox">
+    Test for free — no wallet or API key required
+  </Card>
+  <Card title="x402 Protocol" icon="credit-card" href="/x402-protocol">
+    Pay per call with USDC — no subscription needed
+  </Card>
+</CardGroup>
+
+## Why LimitGuard?
+
+AI agents transact billions daily without trust verification. There's no standard way for an agent to know if a counterparty is legitimate, sanctioned, or fraudulent before sending funds.
+
+LimitGuard solves this with a single API call:
+
+```bash
+curl -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "X-API-Key: lg_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"entity_name": "Acme Corp BV", "country": "NL", "kvk_number": "12345678"}'
+```
+
+```json Response
+{
+  "trust_score": 87,
+  "trust_level": "high",
+  "cluster": "established_eu_sme",
+  "recommendation": "proceed",
+  "sources_checked": 8,
+  "processing_time_ms": 247
+}
+```
+
+## 8 Verification Layers
+
+<CardGroup cols={4}>
+  <Card title="KVK / CBE" icon="building">
+    Dutch & Belgian business registry
+  </Card>
+  <Card title="Sanctions" icon="shield">
+    OpenSanctions — 80+ global lists
+  </Card>
+  <Card title="Jurisdiction" icon="globe">
+    CPI + FATF grey/blacklist
+  </Card>
+  <Card title="Domain" icon="link">
+    WHOIS, DNS, SSL analysis
+  </Card>
+  <Card title="IBAN" icon="credit-card">
+    Bank account validation
+  </Card>
+  <Card title="VAT / VIES" icon="file-invoice">
+    EU VAT registration check
+  </Card>
+  <Card title="Wallet Risk" icon="wallet">
+    ETH, BTC, SOL screening
+  </Card>
+  <Card title="x402 History" icon="clock-rotate-left">
+    On-chain payment trust
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Send entity data">
+    POST the entity name, country, and any identifiers you have — KVK number, domain, IBAN, VAT, or wallet address.
+  </Step>
+  <Step title="8 parallel checks">
+    LimitGuard queries all available data sources in parallel. Business registry, sanctions, jurisdiction, domain, financial, and on-chain — all in under 500ms.
+  </Step>
+  <Step title="Get trust score">
+    Receive a trust score (0-100), risk level, entity cluster, and recommendation: **proceed**, **review**, **enhanced due diligence**, or **block**.
+  </Step>
+</Steps>
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Pay-per-use** | No subscription required. Pay with USDC via x402 protocol. |
+| **Sandbox mode** | Test free with realistic mock data. No wallet needed. |
+| **Three quality tiers** | Choose cached ($0.01), fresh ($0.05), or enhanced ($0.15). |
+| **AI agent native** | MCP, A2A, and x402 discovery. Agents find and use LimitGuard autonomously. |
+| **GDPR compliant** | Belgian entity, EU data residency, no PII stored beyond verification. |
+| **Self-verifying** | LimitGuard verifies itself with its own API. Our score is public. |
+
+## Who Uses LimitGuard
+
+- **AI agent developers** — Verify counterparties before autonomous transactions
+- **Fintech platforms** — KYB and compliance checks via API
+- **Crypto protocols** — Wallet screening and entity trust scoring
+- **B2B marketplaces** — Supplier and buyer trust verification
+
+<Card title="Ready to start?" icon="arrow-right" href="/quickstart">
+  Get your first trust score in under 3 minutes
+</Card>

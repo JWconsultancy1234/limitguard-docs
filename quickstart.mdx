@@ -1,0 +1,264 @@
+---
+title: "Quickstart"
+description: "Get your first trust score in under 3 minutes"
+---
+
+<Steps>
+
+<Step title="Get an API Key">
+
+Create a free API key with a single request — no account or credit card needed.
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.limitguard.ai/v1/keys/create \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "tier": "free"}'
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://api.limitguard.ai/v1/keys/create",
+    json={"email": "you@example.com", "tier": "free"},
+)
+key = response.json()
+print(key["api_key"])  # lg_live_xxxxxxxxxxxxxxxxxxxx
+```
+
+```javascript JavaScript
+const response = await fetch("https://api.limitguard.ai/v1/keys/create", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: "you@example.com", tier: "free" }),
+});
+const { api_key } = await response.json();
+console.log(api_key); // lg_live_xxxxxxxxxxxxxxxxxxxx
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "api_key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+  "key_id": "key_abc123",
+  "tier": "free",
+  "monthly_limit": 500
+}
+```
+
+<Warning>
+Save the `api_key` immediately — it is shown **once only**. The plaintext key is never stored server-side.
+</Warning>
+
+</Step>
+
+<Step title="Try Sandbox Mode (Free)">
+
+Test the API without using real data sources or quota by adding the sandbox header:
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+  -H "X-LimitGuard-Mode: sandbox" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_name": "Acme Corp BV",
+    "country": "NL",
+    "kvk_number": "12345678"
+  }'
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://api.limitguard.ai/v1/entity/check",
+    headers={
+        "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+        "X-LimitGuard-Mode": "sandbox",
+    },
+    json={
+        "entity_name": "Acme Corp BV",
+        "country": "NL",
+        "kvk_number": "12345678",
+    },
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+    "X-LimitGuard-Mode": "sandbox",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    entity_name: "Acme Corp BV",
+    country: "NL",
+    kvk_number: "12345678",
+  }),
+});
+const result = await response.json();
+console.log(result);
+```
+
+</CodeGroup>
+
+Sandbox returns deterministic mock data — same input always gives the same output. No real data sources are called and no quota is consumed.
+
+</Step>
+
+<Step title="Make a Live Entity Check">
+
+Remove the sandbox header for real results against 8 data sources:
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_name": "Acme Corp BV",
+    "country": "NL",
+    "kvk_number": "12345678"
+  }'
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://api.limitguard.ai/v1/entity/check",
+    headers={"X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx"},
+    json={
+        "entity_name": "Acme Corp BV",
+        "country": "NL",
+        "kvk_number": "12345678",
+    },
+)
+result = response.json()
+print(f"Trust Score: {result['trust_score']}/100")
+print(f"Level: {result['trust_level']}")
+print(f"Action: {result['recommendation']}")
+```
+
+```javascript JavaScript
+const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    entity_name: "Acme Corp BV",
+    country: "NL",
+    kvk_number: "12345678",
+  }),
+});
+const result = await response.json();
+console.log(`Trust Score: ${result.trust_score}/100`);
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "trust_score": 87,
+  "trust_level": "high",
+  "cluster": "established_eu_sme",
+  "recommendation": "proceed",
+  "confidence": 0.94,
+  "top_factors": [
+    {"source": "kvk", "signal": "Active registration, 8+ years", "impact": "positive", "weight": 0.35},
+    {"source": "vat", "signal": "VIES verified EU VAT", "impact": "positive", "weight": 0.20},
+    {"source": "sanctions", "signal": "No sanctions match", "impact": "positive", "weight": 0.25}
+  ],
+  "sources_checked": ["kvk", "sanctions", "country_risk", "domain", "vat"],
+  "processing_time_ms": 342
+}
+```
+
+</Step>
+
+<Step title="Try a Quick Risk Score">
+
+For fast risk-only assessment (2 sources, cheaper):
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.limitguard.ai/v1/risk/score \
+  -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_name": "Acme Corp BV", "country": "NL"}'
+```
+
+```python Python
+response = httpx.post(
+    "https://api.limitguard.ai/v1/risk/score",
+    headers={"X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx"},
+    json={"entity_name": "Acme Corp BV", "country": "NL"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch("https://api.limitguard.ai/v1/risk/score", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "lg_live_xxxxxxxxxxxxxxxxxxxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ entity_name: "Acme Corp BV", country: "NL" }),
+});
+console.log(await response.json());
+```
+
+</CodeGroup>
+
+</Step>
+
+</Steps>
+
+## Response Quality Tiers
+
+Control cost vs. freshness with the `X-Response-Quality` header:
+
+| Tier | Header Value | Cost (entity/check) | Description |
+|------|-------------|---------------------|-------------|
+| **Cached** | `cached` | $0.01 | Serve from Redis cache if available |
+| **Fresh** | `fresh` | $0.05 | Always run full fan-out (default) |
+| **Enhanced** | `enhanced` | $0.15 | Full fan-out + premium sources |
+
+```bash
+curl -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "X-API-Key: lg_live_xxxxxxxxxxxxxxxxxxxx" \
+  -H "X-Response-Quality: cached" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_name": "Acme Corp BV", "country": "NL"}'
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    API keys, x402 USDC payments, and sandbox mode
+  </Card>
+  <Card title="Pricing" icon="tag" href="/pricing">
+    Full pricing table for all endpoints and tiers
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/guides/errors">
+    Complete error catalog with causes and fixes
+  </Card>
+  <Card title="AI Agent Integration" icon="robot" href="/guides/ai-agent-integration">
+    How AI agents discover and use LimitGuard
+  </Card>
+</CardGroup>
