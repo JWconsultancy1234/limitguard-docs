@@ -41,7 +41,7 @@ const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
 
 </CodeGroup>
 
-API key users bypass x402 payment — you pay via subscription. Rate limits and monthly quotas apply based on tier.
+API key users bypass x402 payment on API calls — each call draws down your tier's monthly quota instead. Rate limits and monthly quotas apply based on tier; quotas reset on the first day of each calendar month (UTC).
 
 ### Key Format
 
@@ -157,7 +157,7 @@ The legacy `PAYMENT-SIGNATURE` header is still accepted (V1 format). V2 (`X-PAYM
 | Header | Value | Description |
 |--------|-------|-------------|
 | `X-Payment-Verified` | `true` | Payment accepted and verified |
-| `X-Payment-Amount` | `50000` | Amount in USDC 6-decimal units |
+| `X-Payment-Amount` | `850000` | Amount in USDC 6-decimal units |
 | `X-Payment-Fallback` | `true` | Circuit breaker triggered (rare) |
 
 ## Free Endpoints

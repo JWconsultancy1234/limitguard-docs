@@ -109,7 +109,7 @@ listing = httpx.get("https://api.limitguard.ai/.well-known/x402.json").json()
 entity_check = next(e for e in listing["endpoints"] if e["path"] == "/v1/entity/check")
 
 # Step 2: Check price
-price_usdc = float(entity_check["price_usdc"])  # 0.05
+price_usdc = float(entity_check["price_usdc"])  # 0.85
 
 # Step 3: Build x402 payment and call
 from my_wallet import build_x402_payment
@@ -130,7 +130,7 @@ const listing = await fetch("https://api.limitguard.ai/.well-known/x402.json")
 const entityCheck = listing.endpoints.find((e) => e.path === "/v1/entity/check");
 
 // Step 2: Check price
-const priceUsdc = parseFloat(entityCheck.price_usdc); // 0.05
+const priceUsdc = parseFloat(entityCheck.price_usdc); // 0.85
 
 // Step 3: Build x402 payment and call
 const xPayment = await buildX402Payment(priceUsdc * 1_000_000);

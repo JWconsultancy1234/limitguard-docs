@@ -160,19 +160,19 @@ For AI agents, 402 is the expected first response when no payment or API key is 
       "chainId": "eip155:8453",
       "currency": "USDC",
       "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "amount": "50000",
+      "amount": "850000",
       "decimals": 6,
       "recipient": "0xFacilitatorAddress",
-      "description": "LimitGuard API call (0.05 USDC)"
+      "description": "LimitGuard API call (0.85 USDC)"
     },
     {
       "chainId": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "currency": "USDC",
       "contractAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      "amount": "50000",
+      "amount": "850000",
       "decimals": 6,
       "recipient": "SolanaFacilitatorAddress",
-      "description": "LimitGuard API call (0.05 USDC)"
+      "description": "LimitGuard API call (0.85 USDC)"
     }
   ]
 }
@@ -185,7 +185,7 @@ For AI agents, 402 is the expected first response when no payment or API key is 
     Parse the `accepts` array. Choose a network (`chainId`) your agent can pay on.
   </Step>
   <Step title="Check the amount">
-    The `amount` field uses 6 decimal places. `50000` = $0.05 USDC. Verify your wallet has sufficient balance before signing.
+    The `amount` field uses 6 decimal places. `850000` = $0.85 USDC. Verify your wallet has sufficient balance before signing.
   </Step>
   <Step title="Build EIP-3009 signature (EVM) or SPL transfer (Solana)">
     Sign a `TransferWithAuthorization` with a unique nonce and a `validBefore` 5 minutes in the future. See the [x402 Protocol](/x402-protocol) guide for full code examples.
@@ -204,7 +204,7 @@ For AI agents, 402 is the expected first response when no payment or API key is 
     ```json
     {
       "x402Version": "2",
-      "error": "Payment amount insufficient. Required: 50000, provided: 10000",
+      "error": "Payment amount insufficient. Required: 850000, provided: 10000",
       "accepts": [...]
     }
     ```
@@ -253,14 +253,14 @@ For testing x402 without spending real USDC, use Base Sepolia or Solana Devnet. 
 
 <AccordionGroup>
   <Accordion title="Endpoint not available on current tier">
-    **Cause:** Your API key tier does not include access to the requested endpoint. For example, `/v1/kyb/check` and `/v1/compliance/*` are only available on `pro` and `enterprise` tiers.
+    **Cause:** Your API key tier does not include access to the requested endpoint. For example, `/v1/kyb/check` and `/v1/compliance/*` are only available on the `pro` tier.
 
     ```json
     {
       "type": "about:blank",
       "title": "Forbidden",
       "status": 403,
-      "detail": "Endpoint /v1/kyb/check requires pro tier or higher"
+      "detail": "Endpoint /v1/kyb/check requires pro tier"
     }
     ```
 
@@ -448,11 +448,15 @@ X-RateLimit-Reset: 1740052800
 
 | Tier | Requests/min | Monthly Quota |
 |------|-------------|---------------|
-| Free | 10 | 500 |
-| Starter | 60 | 5,000 |
-| Pro | 300 | 50,000 |
-| Enterprise | Custom | Custom |
-| x402 (no key) | 30 | Unlimited (pay-per-use) |
+| Sandbox | 10 | Unlimited |
+| Free | 60 | 500 |
+| Indie | TBD | 1,000 |
+| Starter | 300 | 10,000 |
+| Growth | TBD | 50,000 |
+| Pro | 1,000 | 250,000 |
+| x402 (no key) | No limit | Unlimited (pay-per-use) |
+
+See [Rate Limits](/guides/rate-limits#rate-limits-by-tier) for the authoritative table and [Pricing](/pricing#api-key-tier-upgrades) for upgrade prices.
 
 ### Monthly Quota Exceeded
 
