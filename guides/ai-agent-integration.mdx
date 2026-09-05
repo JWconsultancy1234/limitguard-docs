@@ -563,7 +563,7 @@ USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 CHAIN_ID = "eip155:8453"
 
 def build_x402_payment(
-    amount_usdc: int,    # in 6-decimal units (50000 = $0.05)
+    amount_usdc: int,    # in 6-decimal units (850000 = $0.85)
     sender_key: str,     # agent wallet private key
     recipient: str,      # facilitator address from 402 response
 ) -> str:
@@ -625,7 +625,7 @@ def verify_entity_x402(
     sender_key: str,
     quality: str = "fresh",  # cached | fresh | enhanced
 ) -> dict:
-    tier_prices = {"cached": 10_000, "fresh": 50_000, "enhanced": 150_000}
+    tier_prices = {"cached": 100_000, "fresh": 850_000, "enhanced": 1_500_000}
     amount = tier_prices[quality]
 
     # Step 1: Probe to get facilitator address
@@ -721,7 +721,7 @@ async function buildX402Payment(amountUsdc, signer, recipient) {
 }
 
 async function verifyEntityX402(entityName, country, signer, quality = "fresh") {
-  const tierPrices = { cached: 10_000, fresh: 50_000, enhanced: 150_000 };
+  const tierPrices = { cached: 100_000, fresh: 850_000, enhanced: 1_500_000 };
   const amount = tierPrices[quality];
 
   // Step 1: Probe to get facilitator address
@@ -771,12 +771,12 @@ Control cost vs. freshness with the `X-Response-Quality` header. The payment amo
 
 | Tier | Header Value | /v1/entity/check | /v1/risk/score | /v1/kyb/check | Data Freshness |
 |------|-------------|-----------------|----------------|---------------|----------------|
-| Cached | `cached` | $0.01 (10,000) | $0.005 (5,000) | $0.25 (250,000) | Up to 24h cached |
-| Fresh | `fresh` | $0.05 (50,000) | $0.01 (10,000) | $1.25 (1,250,000) | Live fan-out (default) |
-| Enhanced | `enhanced` | $0.15 (150,000) | $0.05 (50,000) | $2.50 (2,500,000) | Live + premium sources |
+| Cached | `cached` | $0.10 (100,000) | $0.10 (100,000) | $0.25 (250,000) | Up to 24h cached |
+| Fresh | `fresh` | $0.85 (850,000) | $0.65 (650,000) | $1.50 (1,500,000) | Live fan-out (default) |
+| Enhanced | `enhanced` | $1.50 (1,500,000) | $1.00 (1,000,000) | $3.00 (3,000,000) | Live + premium sources |
 
 <Tip>
-For high-frequency screening (e.g., checking every inbound invoice), start with `cached` for pre-screening and only upgrade to `fresh` when the cached score is below 70. This reduces cost by 5x on clean counterparties.
+For high-frequency screening (e.g., checking every inbound invoice), start with `cached` for pre-screening and only upgrade to `fresh` when the cached score is below 70. This reduces cost by 8.5x on clean counterparties.
 </Tip>
 
 ---
@@ -797,7 +797,7 @@ sequenceDiagram
     Note over Agent: Invoice received: Acme Corp BV, €500
 
     Agent->>LimitGuard: POST /v1/risk/score (probe, no payment)
-    LimitGuard-->>Agent: HTTP 402 — amount: 10000, recipient: 0xFaci...
+    LimitGuard-->>Agent: HTTP 402 — amount: 100000, recipient: 0xFaci...
 
     Agent->>Blockchain: EIP-3009 TransferWithAuthorization signature
     Note over Agent: Signs locally — no on-chain tx yet
@@ -809,7 +809,7 @@ sequenceDiagram
 
     Note over Agent: Risk score low — upgrade to full check
 
-    Agent->>LimitGuard: POST /v1/entity/check (fresh, $0.05)
+    Agent->>LimitGuard: POST /v1/entity/check (fresh, $0.85)
     LimitGuard-->>Agent: trust_score: 87, recommendation: proceed
 
     Note over Agent: Score ≥ 80 — proceed autonomously
@@ -1008,9 +1008,9 @@ class TrustGatedAgent:
         payload = {"entity_name": entity_name, "country": country, **kwargs}
         total_paid = 0.0
 
-        # Pass 1: Fast pre-screen ($0.01)
+        # Pass 1: Fast pre-screen ($0.10 cached)
         risk_data = self._call("/v1/risk/score", payload, quality="cached")
-        total_paid += 0.01
+        total_paid += 0.10
         pre_score = risk_data.get("risk_score", 50)
 
         if pre_score > 80:
@@ -1025,9 +1025,9 @@ class TrustGatedAgent:
                 paid_usdc=total_paid,
             )
 
-        # Pass 2: Full entity check ($0.05 fresh)
+        # Pass 2: Full entity check ($0.85 fresh)
         trust_data = self._call("/v1/entity/check", payload, quality="fresh")
-        total_paid += 0.05
+        total_paid += 0.85
 
         trust_score = trust_data["trust_score"]
         decision = self._score_to_decision(trust_score)
@@ -1105,7 +1105,7 @@ const TrustDecision = {
   BLOCK: "block",
 };
 
-const TIER_PRICES = { cached: 10_000, fresh: 50_000, enhanced: 150_000 };
+const TIER_PRICES = { cached: 100_000, fresh: 850_000, enhanced: 1_500_000 };
 
 class TrustGatedAgent {
   constructor(privateKey) {
@@ -1223,7 +1223,7 @@ class TrustGatedAgent {
 
     // Pass 1: Fast pre-screen
     const riskData = await this.call("/v1/risk/score", payload, "cached");
-    totalPaid += 0.01;
+    totalPaid += 0.10;
     const preScore = riskData.risk_score ?? 50;
 
     if (preScore > 80) {
@@ -1238,7 +1238,7 @@ class TrustGatedAgent {
 
     // Pass 2: Full entity check
     const trustData = await this.call("/v1/entity/check", payload, "fresh");
-    totalPaid += 0.05;
+    totalPaid += 0.85;
 
     return {
       score: trustData.trust_score,
