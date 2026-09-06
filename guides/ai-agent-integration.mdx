@@ -73,41 +73,74 @@ curl https://api.limitguard.ai/.well-known/mcp.json
 
 ```json Response
 {
-  "schema_version": "v1",
-  "name_for_human": "LimitGuard Trust Intelligence",
-  "name_for_model": "limitguard",
-  "description_for_human": "Verify the trustworthiness of any business entity before transacting.",
-  "description_for_model": "Use LimitGuard to check entity trust scores before payments, onboarding, or contracts. Returns a 0-100 trust score, risk level, and recommendation (proceed/review/block). Call check_entity_trust for full verification, check_risk_score for fast risk-only, check_kyb for full KYB compliance.",
-  "auth": {
-    "type": "api_key",
-    "header": "X-API-Key"
-  },
-  "api": {
-    "type": "openapi",
-    "url": "https://api.limitguard.ai/api-reference/openapi.json"
-  },
+  "name": "limitguard",
+  "version": "1.0",
+  "description": "LimitGuard Trust Intelligence - entity verification and risk scoring tools for AI agents",
   "tools": [
     {
-      "name": "check_entity_trust",
-      "description": "Full trust check against 8 data sources. Returns trust score, cluster, and recommendation.",
-      "endpoint": "/v1/entity/check",
-      "method": "POST"
+      "name": "check_entity",
+      "description": "MCP tool: full entity trust check for LLM agents. Same as /v1/entity/check with MCP-native interface.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_name": { "type": "string" },
+          "country": { "type": "string", "description": "ISO country code (NL, BE, etc.)" },
+          "kvk_number": { "type": "string" },
+          "domain": { "type": "string" }
+        },
+        "required": ["entity_name", "country"]
+      }
     },
     {
-      "name": "check_risk_score",
-      "description": "Fast risk-only score (2 sources, cheaper). Use for quick pre-screening.",
-      "endpoint": "/v1/risk/score",
-      "method": "POST"
+      "name": "check_agent",
+      "description": "MCP tool: verify AI agent identity and reputation score before inter-agent transactions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "agent_id": { "type": "string" },
+          "agent_name": { "type": "string" }
+        },
+        "required": ["agent_id", "agent_name"]
+      }
     },
     {
-      "name": "check_kyb",
-      "description": "Full Know Your Business compliance check with audit trail.",
-      "endpoint": "/v1/kyb/check",
-      "method": "POST"
+      "name": "trust_score",
+      "description": "MCP tool: get entity trust score (0-100) with cluster assignment and recommendation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "entity_id": { "type": "string" } },
+        "required": ["entity_id"]
+      }
+    },
+    {
+      "name": "verify_wallet",
+      "description": "MCP tool: verify blockchain wallet address. Checks on-chain activity and risk flags.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet_address": { "type": "string" },
+          "chain_id": { "type": "string", "description": "CAIP-2 chain ID (default: eip155:8453)" }
+        },
+        "required": ["wallet_address"]
+      }
+    },
+    {
+      "name": "risk_score",
+      "description": "MCP tool: quick risk score for entity name + country pair.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_name": { "type": "string" },
+          "country": { "type": "string" }
+        },
+        "required": ["entity_name", "country"]
+      }
     }
   ]
 }
 ```
+
+All 5 tools are priced via x402 — see [Pricing](/pricing#mcp-tool-endpoints). They are not free just because they're callable as native tools.
 
 ### Configuring an LLM Agent
 
@@ -119,7 +152,7 @@ import anthropic
 client = anthropic.Anthropic()
 
 # Register LimitGuard as an MCP server
-# Claude will call check_entity_trust automatically when it needs to verify an entity
+# Claude will call check_entity automatically when it needs to verify an entity
 response = client.beta.messages.create(
     model="claude-opus-4-6",
     max_tokens=1024,
@@ -144,7 +177,7 @@ response = client.beta.messages.create(
 )
 
 print(response.content)
-# Claude calls check_entity_trust internally, interprets the score,
+# Claude calls check_entity internally, interprets the score,
 # and returns a recommendation with evidence.
 ```
 
@@ -158,7 +191,7 @@ const tools = [
   {
     type: "function",
     function: {
-      name: "check_entity_trust",
+      name: "check_entity",
       description:
         "Verify the trustworthiness of a business entity before transacting. " +
         "Returns a 0-100 trust score and recommendation.",
@@ -179,7 +212,7 @@ const tools = [
 
 // Tool execution handler
 async function executeTool(name, args) {
-  if (name === "check_entity_trust") {
+  if (name === "check_entity") {
     const response = await fetch("https://api.limitguard.ai/v1/entity/check", {
       method: "POST",
       headers: {
@@ -235,7 +268,7 @@ console.log(response.choices[0].message.content);
 </CodeGroup>
 
 <Tip>
-When writing system prompts, instruct the agent explicitly: "Before executing any payment or onboarding a new supplier, always call `check_entity_trust`. Only proceed if `recommendation` is `proceed` or `review`." LLMs follow clear tool-use instructions reliably.
+When writing system prompts, instruct the agent explicitly: "Before executing any payment or onboarding a new supplier, always call `check_entity`. Only proceed if `recommendation` is `proceed` or `review`." LLMs follow clear tool-use instructions reliably.
 </Tip>
 
 ---
@@ -454,44 +487,40 @@ curl https://api.limitguard.ai/.well-known/x402.json
 
 ```json Response
 {
-  "name": "LimitGuard Trust Intelligence API",
-  "description": "Entity verification and risk scoring for EU businesses",
-  "version": "2",
+  "service": "LimitGuard.ai",
+  "version": "1.0",
+  "protocol": "x402-v2",
+  "x402Version": 2,
+  "discoverable": true,
+  "description": "Trust Intelligence API with 18 priced endpoints. Entity verification, risk scoring, KYB, compliance, wallet screening, and MCP tools. Base + Solana.",
+  "capabilities": ["entity_verification", "risk_scoring", "reputation_tracking", "compliance_monitoring", "wallet_verification"],
   "endpoints": [
     {
       "path": "/v1/entity/check",
       "method": "POST",
-      "price_usdc": "0.05",
-      "chain": "eip155:8453",
-      "currency": "USDC",
-      "quality_tiers": {
-        "cached": "0.01",
-        "fresh": "0.05",
-        "enhanced": "0.15"
-      }
+      "price_usdc": 0.85,
+      "price_raw": 850000,
+      "category": "trust_intelligence"
     },
     {
       "path": "/v1/risk/score",
       "method": "POST",
-      "price_usdc": "0.01",
-      "chain": "eip155:8453",
-      "currency": "USDC"
+      "price_usdc": 0.65,
+      "price_raw": 650000,
+      "category": "trust_intelligence"
     },
     {
       "path": "/v1/kyb/check",
       "method": "POST",
-      "price_usdc": "1.25",
-      "chain": "eip155:8453",
-      "currency": "USDC"
+      "price_usdc": 1.5,
+      "price_raw": 1500000,
+      "category": "trust_intelligence"
     }
-  ],
-  "payment_methods": [
-    {"type": "x402", "version": "2"},
-    {"type": "api_key"}
-  ],
-  "networks": ["eip155:8453", "eip155:84532", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"]
+  ]
 }
 ```
+
+Truncated to three entries; the live response lists all 18 priced endpoints. `price_raw` is the default (`fresh`) price in USDC 6-decimal units. The listing does **not** break out per-quality-tier prices — for `cached` or `enhanced` amounts, see [Pricing](/pricing#tiered-pricing) or read the `amount` from the 402 response for the quality you requested.
 
 ### How x402 Works
 
@@ -530,7 +559,7 @@ USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 CHAIN_ID = "eip155:8453"
 
 def build_x402_payment(
-    amount_usdc: int,    # in 6-decimal units (50000 = $0.05)
+    amount_usdc: int,    # in 6-decimal units (850000 = $0.85)
     sender_key: str,     # agent wallet private key
     recipient: str,      # facilitator address from 402 response
 ) -> str:
@@ -592,7 +621,7 @@ def verify_entity_x402(
     sender_key: str,
     quality: str = "fresh",  # cached | fresh | enhanced
 ) -> dict:
-    tier_prices = {"cached": 10_000, "fresh": 50_000, "enhanced": 150_000}
+    tier_prices = {"cached": 100_000, "fresh": 850_000, "enhanced": 1_500_000}
     amount = tier_prices[quality]
 
     # Step 1: Probe to get facilitator address
@@ -688,7 +717,7 @@ async function buildX402Payment(amountUsdc, signer, recipient) {
 }
 
 async function verifyEntityX402(entityName, country, signer, quality = "fresh") {
-  const tierPrices = { cached: 10_000, fresh: 50_000, enhanced: 150_000 };
+  const tierPrices = { cached: 100_000, fresh: 850_000, enhanced: 1_500_000 };
   const amount = tierPrices[quality];
 
   // Step 1: Probe to get facilitator address
@@ -738,12 +767,12 @@ Control cost vs. freshness with the `X-Response-Quality` header. The payment amo
 
 | Tier | Header Value | /v1/entity/check | /v1/risk/score | /v1/kyb/check | Data Freshness |
 |------|-------------|-----------------|----------------|---------------|----------------|
-| Cached | `cached` | $0.01 (10,000) | $0.005 (5,000) | $0.25 (250,000) | Up to 24h cached |
-| Fresh | `fresh` | $0.05 (50,000) | $0.01 (10,000) | $1.25 (1,250,000) | Live fan-out (default) |
-| Enhanced | `enhanced` | $0.15 (150,000) | $0.05 (50,000) | $2.50 (2,500,000) | Live + premium sources |
+| Cached | `cached` | $0.10 (100,000) | $0.10 (100,000) | $0.25 (250,000) | Up to 24h cached |
+| Fresh | `fresh` | $0.85 (850,000) | $0.65 (650,000) | $1.50 (1,500,000) | Live fan-out (default) |
+| Enhanced | `enhanced` | $1.50 (1,500,000) | $1.00 (1,000,000) | $3.00 (3,000,000) | Live + premium sources |
 
 <Tip>
-For high-frequency screening (e.g., checking every inbound invoice), start with `cached` for pre-screening and only upgrade to `fresh` when the cached score is below 70. This reduces cost by 5x on clean counterparties.
+For high-frequency screening (e.g., checking every inbound invoice), start with `cached` for pre-screening and only upgrade to `fresh` when the cached score is below 70. This reduces cost by 8.5x on clean counterparties.
 </Tip>
 
 ---
@@ -764,7 +793,7 @@ sequenceDiagram
     Note over Agent: Invoice received: Acme Corp BV, €500
 
     Agent->>LimitGuard: POST /v1/risk/score (probe, no payment)
-    LimitGuard-->>Agent: HTTP 402 — amount: 10000, recipient: 0xFaci...
+    LimitGuard-->>Agent: HTTP 402 — amount: 100000, recipient: 0xFaci...
 
     Agent->>Blockchain: EIP-3009 TransferWithAuthorization signature
     Note over Agent: Signs locally — no on-chain tx yet
@@ -776,7 +805,7 @@ sequenceDiagram
 
     Note over Agent: Risk score low — upgrade to full check
 
-    Agent->>LimitGuard: POST /v1/entity/check (fresh, $0.05)
+    Agent->>LimitGuard: POST /v1/entity/check (fresh, $0.85)
     LimitGuard-->>Agent: trust_score: 87, recommendation: proceed
 
     Note over Agent: Score ≥ 80 — proceed autonomously
@@ -830,6 +859,15 @@ class TrustGatedAgent:
     USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     CHAIN_ID = "eip155:8453"
 
+    # Per-quality prices are not carried in the x402 listing — see /pricing.
+    # Amounts are USDC 6-decimal units (1_000_000 = $1.00).
+    TIER_PRICES = {
+        "/v1/entity/check": {"cached": 100_000, "fresh": 850_000, "enhanced": 1_500_000},
+        "/v1/risk/score": {"cached": 100_000, "fresh": 650_000, "enhanced": 1_000_000},
+        "/v1/reputation/score": {"cached": 100_000, "fresh": 650_000, "enhanced": 1_000_000},
+        "/v1/kyb/check": {"cached": 250_000, "fresh": 1_500_000, "enhanced": 3_000_000},
+    }
+
     def __init__(self, wallet_private_key: str):
         self.wallet = Account.from_key(wallet_private_key)
         self._discovery_cache: dict | None = None
@@ -854,9 +892,11 @@ class TrustGatedAgent:
         )
         if entry is None:
             raise ValueError(f"Endpoint {endpoint} not in discovery listing")
-        tiers = entry.get("quality_tiers", {})
-        price_str = tiers.get(quality) or entry.get("price_usdc", "0.05")
-        return int(float(price_str) * 1_000_000)
+        tiers = self.TIER_PRICES.get(endpoint)
+        if tiers and quality in tiers:
+            return tiers[quality]
+        # Flat-priced endpoint, or a quality tier it does not offer.
+        return int(entry["price_raw"])
 
     # ------------------------------------------------------------------ #
     # Payment                                                              #
@@ -975,9 +1015,9 @@ class TrustGatedAgent:
         payload = {"entity_name": entity_name, "country": country, **kwargs}
         total_paid = 0.0
 
-        # Pass 1: Fast pre-screen ($0.01)
+        # Pass 1: Fast pre-screen ($0.10 cached)
         risk_data = self._call("/v1/risk/score", payload, quality="cached")
-        total_paid += 0.01
+        total_paid += 0.10
         pre_score = risk_data.get("risk_score", 50)
 
         if pre_score > 80:
@@ -992,9 +1032,9 @@ class TrustGatedAgent:
                 paid_usdc=total_paid,
             )
 
-        # Pass 2: Full entity check ($0.05 fresh)
+        # Pass 2: Full entity check ($0.85 fresh)
         trust_data = self._call("/v1/entity/check", payload, quality="fresh")
-        total_paid += 0.05
+        total_paid += 0.85
 
         trust_score = trust_data["trust_score"]
         decision = self._score_to_decision(trust_score)
@@ -1072,7 +1112,14 @@ const TrustDecision = {
   BLOCK: "block",
 };
 
-const TIER_PRICES = { cached: 10_000, fresh: 50_000, enhanced: 150_000 };
+// Per-quality prices are not carried in the x402 listing — see /pricing.
+// Amounts are USDC 6-decimal units (1_000_000 = $1.00).
+const TIER_PRICES = {
+  "/v1/entity/check": { cached: 100_000, fresh: 850_000, enhanced: 1_500_000 },
+  "/v1/risk/score": { cached: 100_000, fresh: 650_000, enhanced: 1_000_000 },
+  "/v1/reputation/score": { cached: 100_000, fresh: 650_000, enhanced: 1_000_000 },
+  "/v1/kyb/check": { cached: 250_000, fresh: 1_500_000, enhanced: 3_000_000 },
+};
 
 class TrustGatedAgent {
   constructor(privateKey) {
@@ -1093,8 +1140,9 @@ class TrustGatedAgent {
     const listing = await this.discover();
     const entry = listing.endpoints.find((e) => e.path === endpoint);
     if (!entry) throw new Error(`Endpoint ${endpoint} not in discovery listing`);
-    const price = entry.quality_tiers?.[quality] ?? entry.price_usdc ?? "0.05";
-    return Math.round(parseFloat(price) * 1_000_000);
+    const tiered = TIER_PRICES[endpoint]?.[quality];
+    // Flat-priced endpoint, or a quality tier it does not offer.
+    return tiered ?? entry.price_raw;
   }
 
   async getFacilitator(endpoint, payload) {
@@ -1190,7 +1238,7 @@ class TrustGatedAgent {
 
     // Pass 1: Fast pre-screen
     const riskData = await this.call("/v1/risk/score", payload, "cached");
-    totalPaid += 0.01;
+    totalPaid += 0.10;
     const preScore = riskData.risk_score ?? 50;
 
     if (preScore > 80) {
@@ -1205,7 +1253,7 @@ class TrustGatedAgent {
 
     // Pass 2: Full entity check
     const trustData = await this.call("/v1/entity/check", payload, "fresh");
-    totalPaid += 0.05;
+    totalPaid += 0.85;
 
     return {
       score: trustData.trust_score,

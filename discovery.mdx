@@ -30,23 +30,26 @@ curl https://api.limitguard.ai/.well-known/x402.json
 
 ```json Response
 {
-  "name": "LimitGuard Trust Intelligence API",
-  "description": "Entity verification and risk scoring for EU businesses",
+  "service": "LimitGuard.ai",
+  "version": "1.0",
+  "protocol": "x402-v2",
+  "x402Version": 2,
+  "discoverable": true,
+  "description": "Trust Intelligence API with 18 priced endpoints. Entity verification, risk scoring, KYB, compliance, wallet screening, and MCP tools. Base + Solana.",
+  "capabilities": ["entity_verification", "risk_scoring", "reputation_tracking", "compliance_monitoring", "wallet_verification"],
   "endpoints": [
     {
       "path": "/v1/entity/check",
       "method": "POST",
-      "price_usdc": "0.05",
-      "chain": "eip155:8453",
-      "currency": "USDC"
+      "price_usdc": 0.85,
+      "price_raw": 850000,
+      "category": "trust_intelligence"
     }
-  ],
-  "payment_methods": [
-    {"type": "x402", "version": "2"},
-    {"type": "api_key"}
   ]
 }
 ```
+
+The full response lists all 18 priced endpoints — including the 5 MCP tool endpoints and the 4 API-key tier-upgrade endpoints ($29–$999). See [Pricing](/pricing) for the complete, current table.
 
 Also available at `/v1/sales/listing` for the same data.
 
@@ -106,7 +109,7 @@ listing = httpx.get("https://api.limitguard.ai/.well-known/x402.json").json()
 entity_check = next(e for e in listing["endpoints"] if e["path"] == "/v1/entity/check")
 
 # Step 2: Check price
-price_usdc = float(entity_check["price_usdc"])  # 0.05
+price_usdc = float(entity_check["price_usdc"])  # 0.85
 
 # Step 3: Build x402 payment and call
 from my_wallet import build_x402_payment
@@ -127,7 +130,7 @@ const listing = await fetch("https://api.limitguard.ai/.well-known/x402.json")
 const entityCheck = listing.endpoints.find((e) => e.path === "/v1/entity/check");
 
 // Step 2: Check price
-const priceUsdc = parseFloat(entityCheck.price_usdc); // 0.05
+const priceUsdc = parseFloat(entityCheck.price_usdc); // 0.85
 
 // Step 3: Build x402 payment and call
 const xPayment = await buildX402Payment(priceUsdc * 1_000_000);

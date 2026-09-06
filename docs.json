@@ -32,7 +32,7 @@
       {
         "anchor": "GitHub",
         "icon": "github",
-        "href": "https://github.com/JWconsultancy1234/limitguard-docs"
+        "href": "https://github.com/jwconsultancyteam/limitguard-docs"
       }
     ],
     "tabs": [
@@ -85,6 +85,7 @@
           {
             "group": "Changelog",
             "pages": [
+              "changelog/2026-09-05",
               "changelog/2026-02-20"
             ]
           }
@@ -104,7 +105,7 @@
     }
   },
   "footerSocials": {
-    "github": "https://github.com/JWconsultancy1234/limitguard-docs",
+    "github": "https://github.com/jwconsultancyteam/limitguard-docs",
     "website": "https://limitguard.ai"
   },
   "feedback": {

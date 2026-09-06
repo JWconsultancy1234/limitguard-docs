@@ -12,9 +12,10 @@ LimitGuard enforces rate limits to ensure fair access and API stability. Limits 
 | **Sandbox** | 10 / min per IP | Unlimited | `X-LimitGuard-Mode: sandbox` or `lg_test_` key |
 | **x402 (no key)** | No limit | No limit | `X-PAYMENT` header (pay per call) |
 | **Free** | 60 / min | 500 / mo | `lg_live_` API key — free tier |
-| **Starter** | 300 / min | TBD | `lg_live_` API key — starter tier |
-| **Pro** | 1,000 / min | TBD | `lg_live_` API key — pro tier |
-| **Enterprise** | Custom | Custom | `lg_live_` API key — contact sales |
+| **Indie** | TBD | 1,000 / mo | `lg_live_` API key — upgraded via x402 ($29) |
+| **Starter** | 300 / min | 10,000 / mo | `lg_live_` API key — upgraded via x402 ($99) |
+| **Growth** | TBD | 50,000 / mo | `lg_live_` API key — upgraded via x402 ($299) |
+| **Pro** | 1,000 / min | 250,000 / mo | `lg_live_` API key — upgraded via x402 ($999) |
 
 <Note>
 Monthly quotas reset on the first day of each calendar month (UTC). Minute-level limits use a rolling window, not a fixed clock boundary.
@@ -311,19 +312,25 @@ If you are consistently hitting rate limits on a subscription key, you have two 
 
 <CardGroup cols={2}>
   <Card title="Upgrade Your Plan" icon="arrow-up" href="/authentication">
-    Move from Free to Starter, Pro, or Enterprise for higher per-minute and monthly limits.
+    Move from Free to Indie, Starter, Growth, or Pro for higher per-minute and monthly limits.
   </Card>
   <Card title="Switch to x402" icon="credit-card" href="/x402-protocol">
     Pay per call with USDC. No quotas, no monthly limits — scales to any volume instantly.
   </Card>
 </CardGroup>
 
-To create or upgrade a key:
+To create a key, then upgrade it:
 
 ```bash
+# 1. Create a free key (only `free` or `sandbox` can be provisioned directly)
 curl -X POST https://api.limitguard.ai/v1/keys/create \
   -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "tier": "pro"}'
+  -d '{"email": "you@example.com", "tier": "free"}'
+
+# 2. Upgrade by paying via x402 (returns 402 first — sign and retry with X-PAYMENT)
+curl https://api.limitguard.ai/v1/keys/upgrade/pro \
+  -H "X-API-Key: lg_live_..." \
+  -H "X-PAYMENT: <base64 payment>"
 ```
 
-Available tiers: `free`, `starter`, `pro`, `enterprise`.
+Available tiers: `free`, `sandbox`, `indie`, `starter`, `growth`, `pro`. See [Authentication](/authentication#api-key-authentication) for quotas and upgrade prices.
