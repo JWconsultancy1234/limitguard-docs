@@ -65,6 +65,12 @@
               "guides/trust-architecture",
               "guides/ai-agent-integration"
             ]
+          },
+          {
+            "group": "Post-mortems",
+            "pages": [
+              "postmortems/2026-09-langfuse-event-loop"
+            ]
           }
         ]
       },
