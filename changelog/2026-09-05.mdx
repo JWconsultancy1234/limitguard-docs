@@ -31,6 +31,13 @@ Only `free` and `sandbox` keys can be provisioned directly through `POST /v1/key
 
 ### MCP tool names
 
+<Note>
+  Superseded by [September 7](/changelog/2026-09-07): two of the five names below are
+  wrong. The MCP server answers to `get_trust_score` and `get_risk_score`, not
+  `trust_score` and `risk_score`. The paragraph is left as it was published, because a
+  changelog entry records what was said on a date.
+</Note>
+
 The manifest at `/.well-known/mcp.json` declares `check_entity`. Documentation examples that called it `check_entity_trust` have been corrected. The five tools are `check_entity`, `check_agent`, `trust_score`, `verify_wallet`, and `risk_score`.
 
 ### Discovery response shape

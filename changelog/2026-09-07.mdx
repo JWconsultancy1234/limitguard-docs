@@ -1,17 +1,20 @@
 ---
 title: "September 7, 2026"
-description: "MCP tool names corrected, and these docs are now generated from the API source"
+description: "MCP tool names corrected, and these docs start generating from the API source"
 ---
 
 ## Kept Current Automatically
 
-Every price and tool name on this site is now rendered from the LimitGuard API's own
-source, not transcribed by hand. When a price or an MCP tool changes there, a pull
-request opens against this repository the same day with the pages already updated.
+The price and tool-name table cells on this site are now produced by a generator that
+reads the LimitGuard API's own source instead of transcribing it by hand. This entry is
+the first such render, run by hand. Once the sync workflow lands, a pull request will
+open against this repository whenever a price or an MCP tool name changes there, with the
+affected cells already updated. Until then these pages stay hand-maintained.
 
 <Note>
   The [September 5](/changelog/2026-09-05) corrections were found by reading the docs
-  against the live API by hand. This entry is the last one that will need to be.
+  against the live API by hand. The generator is meant to make that sweep unnecessary for
+  the values it covers — the prices and the MCP tool names in the tables listed below.
 </Note>
 
 ### MCP tool names corrected
@@ -25,8 +28,8 @@ tool names the MCP server does not answer to:
 | `POST /v1/mcp/risk-score` | `risk_score` | `get_risk_score` |
 
 The sample `/.well-known/mcp.json` response in
-[AI agent integration](/guides/ai-agent-integration#discovery) named the same two tools
-the same wrong way. It now matches what that endpoint returns.
+[AI agent integration](/guides/ai-agent-integration#mcp-model-context-protocol) named the
+same two tools the same wrong way. It now matches what that endpoint returns.
 
 The names only matter over the MCP transport — `tools/call` with the old name returns
 `Unknown tool`. The REST paths themselves are unchanged, so nothing calling
@@ -45,7 +48,8 @@ these pages are now generated with that directory excluded for exactly that reas
 | [Authentication](/authentication) | the four API key tier upgrade prices |
 | [AI agent integration](/guides/ai-agent-integration) | the quality-tier price matrix |
 
-Prose is not generated, and neither are the JSON samples. Only the table cells that
-quote a number or a tool name are, so an endpoint that gains a price but no row here is
-reported rather than invented — the sync says so instead of writing a description
-nobody wrote.
+Prose is not generated, and neither are the JSON samples — the `/.well-known/mcp.json`
+sample corrected above is a hand fix, and tool names quoted outside a table stay
+hand-maintained. Only the table cells that quote a number or a tool name are generated,
+so an endpoint that gains a price but no row here is reported rather than invented — the
+sync says so instead of writing a description nobody wrote.
