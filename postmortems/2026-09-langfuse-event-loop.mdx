@@ -1,10 +1,12 @@
 ---
 title: "Outage post-mortem, 2026-06-19 to 2026-09-05"
-description: "79 days of 503s from one synchronous call with no timeout on the event loop, why nothing noticed, and what is structurally different now"
+sidebarTitle: "Event-loop outage"
+description: "78 days of 503s from one synchronous call with no timeout on the event loop, why nothing noticed, and what is structurally different now"
 ---
+
 `api.limitguard.ai` returned HTTP 503 from 2026-06-19T13:57Z until 2026-09-05T17:16Z. The process was alive the whole time. Its event loop was blocked in one synchronous call that had no timeout, and nothing in the system was positioned to notice.
 
-This page covers what happened, why it took 79 days to see, what was fixed, and what is structurally different now. It does not cover customer data.
+This page covers what happened, why it took 78 days to see, what was fixed, and what is structurally different now. It does not cover customer data.
 
 ## Timeline
 
@@ -13,8 +15,8 @@ All times UTC.
 | When | What |
 |---|---|
 | 2026-06-19 13:56 | `/health` latency climbs from about 270 ms to 1.4 s over one minute. |
-| 2026-06-19 13:57:56 | Last log line. The event-loop thread enters a blocking `read()` on a socket to the tracing backend and never returns. Every request queued behind it hangs. The reverse proxy reports no upstreams and serves 503. |
-| 2026-06-19 to 2026-09-05 | The container never exits, so the `restart: unless-stopped` policy never fires. The Docker healthcheck keeps executing into the hung process every 15 s. Over 79 days those execs drive the container's shim to its file-descriptor hard limit (524,287), at which point `docker exec` stops working too. |
+| 2026-06-19 13:57:56 | Last log line. The event-loop thread enters a blocking `read()` on a socket to the tracing backend, Langfuse, and never returns. Every request queued behind it hangs. The reverse proxy reports no upstreams and serves 503. |
+| 2026-06-19 to 2026-09-05 | The container never exits, so the `restart: unless-stopped` policy never fires. The Docker healthcheck keeps executing into the hung process every 15 s. Each of those execs leaks descriptors that are never reclaimed, and by September the container's shim has reached its file-descriptor hard limit (524,287), at which point `docker exec` stops working too. |
 | 2026-09-05 | The outage is found during unrelated work. Read-only diagnosis before any restart: the main thread is in `read()` on fd 13, a blocking socket to the tracing host; the shim is at its descriptor limit. |
 | 2026-09-05 17:16 | The fix from PR #167 is deployed from its branch. The wedged container cannot be stopped normally and is killed and recreated. Service restored. |
 | 2026-09-05 20:03 | PR #167 merged after CI. PR #168 adds Slack alerting the same evening. |
@@ -22,9 +24,9 @@ All times UTC.
 
 ## Root cause
 
-`/health` called the tracing client's `auth_check()` synchronously, on the asyncio event-loop thread, on every probe. The client's synchronous HTTP call has no timeout by default. The tracing host stalled once, the call blocked, and with the loop blocked the API could serve nothing at all.
+`/health` called the Langfuse client's `auth_check()` synchronously, on the asyncio event-loop thread, on every probe. The client's synchronous HTTP call has no timeout by default. The tracing host stalled once, the call blocked, and with the loop blocked the API could serve nothing at all.
 
-Three things had to be true for a single stalled call to take the service down for 79 days:
+Three things had to be true for a single stalled call to take the service down for 78 days:
 
 1. Blocking network I/O was allowed on the event-loop thread.
 2. That I/O had no timeout, so one stall was permanent.
@@ -52,8 +54,8 @@ On the host, a cron job restarts the container if Docker reports it unhealthy, a
 ## What is different now
 
 - **Nothing blocking runs on the event loop.** Probes that can stall run in a bounded pool with a timeout, and a slow dependency degrades one probe rather than the service.
-- **A hung process becomes an exited process.** The 30 s loop watchdog turns the failure mode that lasted 79 days into one that lasts under a minute, because an exited container is a state the platform knows how to recover from.
-- **Unhealthy reaches a human.** External uptime monitoring posts to Slack, and the host restarts an unhealthy container on its own within five minutes.
+- **A hung process becomes an exited process.** The 30 s loop watchdog turns the failure mode that lasted 78 days into one that lasts under a minute, because an exited container is a state the platform knows how to recover from.
+- **Unhealthy reaches a human.** Host-side signals post to Slack, and the host restarts an unhealthy container on its own within five minutes.
 - **Recovery is designed for, not just hoped for.** Because the watchdog can hard-exit mid-operation, the settlement path was made safe against exactly that, rather than assuming clean shutdowns.
 
 Live status: [status.limitguard.ai](https://status.limitguard.ai).
