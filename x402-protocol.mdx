@@ -340,9 +340,15 @@ and its price; no data source is called (see docs/errors.md) and the request is 
 charged. The unpaid 402 quote for a `cached` request probes the cache first: on a
 confirmed miss it is priced at the `fresh` tier and carries
 `extensions.bazaar.info.cachedTierAvailable: false`, so a caller is not sold the cheap
-tier for a call that would deliver nothing. If the probe cannot run (cache
-unconfigured or unreachable) the cached price is quoted as before; a miss on the paid
-call is still not charged, because settlement is gated on the route's 2xx response.
+tier for a call that would deliver nothing. When a quote carries that flag, retry with
+`X-Response-Quality: fresh` or drop the header; the `amount` in the quote is already the
+fresh price, so paying it as-is also works. If the probe cannot run (cache unconfigured
+or unreachable) the cached price is quoted as before; a miss on the paid call is still
+not charged, because settlement is gated on the route's 2xx response. The probe's
+answer is subject to the per-entity limit: an anonymous caller gets at most 5 quotes
+per entity per hour on these four endpoints (the same counter that meters the checks
+themselves, see docs/rate-limits.md), then `429`, so cache state cannot be used to
+enumerate which entities have been checked.
 Fresh calls fill the cache, so "cached when available" means: after a fresh check of
 the same request (entity, country and the same identifiers -- a different KVK number is a
 different cache entry). A fresh call itself never reads a cache: it always runs the live check. The refill TTL differs by endpoint: 1 hour for
