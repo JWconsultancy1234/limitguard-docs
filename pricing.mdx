@@ -50,9 +50,9 @@ The [5 MCP tools](/guides/ai-agent-integration#mcp-model-context-protocol) are *
 |----------|------|-------|
 | `POST /v1/mcp/check-entity` | `check_entity` | $0.85 |
 | `POST /v1/mcp/risk-score` | `get_risk_score` | $0.65 |
-| `POST /v1/mcp/check-agent` | `check_agent` | $0.10 |
-| `POST /v1/mcp/trust-score` | `get_trust_score` | $0.10 |
-| `GET /v1/mcp/verify-wallet` | `verify_wallet` | $0.10 |
+| `POST /v1/mcp/check-agent` | `check_agent` | $0.00 |
+| `POST /v1/mcp/trust-score` | `get_trust_score` | $0.00 |
+| `POST /v1/mcp/verify-wallet` | `verify_wallet` | $0.00 |
 
 <Note>
   The `Endpoint` column shows the REST transport path. MCP clients invoke these by tool name with the arguments declared in the [MCP manifest](/guides/ai-agent-integration#mcp-model-context-protocol). `verify_wallet` is the only tool exposed over `GET`, so its `wallet_address` and `chain_id` arguments are not sent as a JSON body.
@@ -64,10 +64,10 @@ Pay via x402 to move an existing API key onto a higher monthly call quota. This 
 
 | Endpoint | Price | Unlocks |
 |----------|-------|---------|
-| `GET /v1/keys/upgrade/indie` | $29 | 1,000 calls/mo |
-| `GET /v1/keys/upgrade/starter` | $99 | 10,000 calls/mo |
-| `GET /v1/keys/upgrade/growth` | $299 | 50,000 calls/mo |
-| `GET /v1/keys/upgrade/pro` | $999 | 250,000 calls/mo |
+| `POST /v1/keys/upgrade/indie` | $29 | 1,000 calls/mo |
+| `POST /v1/keys/upgrade/starter` | $99 | 10,000 calls/mo |
+| `POST /v1/keys/upgrade/growth` | $299 | 50,000 calls/mo |
+| `POST /v1/keys/upgrade/pro` | $999 | 250,000 calls/mo |
 
 ## Free Endpoints
 
