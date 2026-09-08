@@ -50,6 +50,16 @@
               }
             }
           },
+          "404": {
+            "description": "Not cached (X-Response-Quality: cached) \u2014 no data source was called",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation error",
             "content": {
@@ -87,7 +97,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RiskScoreRequest"
+                "$ref": "#/components/schemas/app__models__request__RiskScoreRequest"
               }
             }
           },
@@ -100,6 +110,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RiskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not cached (X-Response-Quality: cached) \u2014 no data source was called",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -135,7 +155,7 @@
     "/v1/keys/create": {
       "post": {
         "summary": "Create Key",
-        "description": "Create a new API key for self-service provisioning.\n\nReturns the plaintext key exactly once. The key cannot be retrieved\nafter this response - only a SHA-256 hash is stored.",
+        "description": "Create a new API key for self-service provisioning.\n\nOnly free and sandbox tiers can be created directly.\nFor paid tiers, create a free key first then POST /v1/keys/upgrade/{tier}.\n\nReturns the plaintext key exactly once. The key cannot be retrieved\nafter this response - only a SHA-256 hash is stored.",
         "operationId": "create_key_v1_keys_create_post",
         "requestBody": {
           "content": {
@@ -168,12 +188,102 @@
               }
             }
           }
+        }
+      }
+    },
+    "/v1/keys/usage": {
+      "get": {
+        "summary": "Get Usage",
+        "description": "Check current API key usage and remaining quota.\n\nSend X-API-Key header to identify the key. Free endpoint (no x402 cost).",
+        "operationId": "get_usage_v1_keys_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyUsageResponse"
+                }
+              }
+            }
+          }
         },
         "security": [
           {
             "APIKeyHeader": []
           }
         ]
+      }
+    },
+    "/v1/keys/revoke": {
+      "post": {
+        "summary": "Revoke Key",
+        "description": "Revoke an API key permanently.\n\nThe key being revoked is identified by the X-API-Key header.\nThis action is irreversible \u2014 the key will stop working immediately.",
+        "operationId": "revoke_key_v1_keys_revoke_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Revoke Key V1 Keys Revoke Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/keys/upgrade/{tier}": {
+      "post": {
+        "summary": "Upgrade Key",
+        "description": "Upgrade an API key to a paid tier via x402 USDC payment.\n\nThe x402 middleware handles payment verification before this handler runs.\nSend X-API-Key header to identify which key to upgrade.\n\nTier ladder: free -> indie ($29) -> starter ($99) -> growth ($299) -> pro ($999)",
+        "operationId": "upgrade_key_v1_keys_upgrade__tier__post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyUpgradeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/usage/summary": {
@@ -299,7 +409,7 @@
     "/v1/audit/trail": {
       "get": {
         "summary": "Get Audit Trail",
-        "description": "Return recent audit trail entries, filtered by tenant.",
+        "description": "Return recent audit trail entries, filtered by tenant (DYN-403).",
         "operationId": "get_audit_trail_v1_audit_trail_get",
         "security": [
           {
@@ -378,7 +488,7 @@
     "/v1/audit/query": {
       "get": {
         "summary": "Query Audit Trail",
-        "description": "Query persistent audit trail entries with filters (DYN-343).",
+        "description": "Query persistent audit trail entries with filters (DYN-343).\n\nTenant-scoped: only returns entries belonging to the caller (DYN-403).",
         "operationId": "query_audit_trail_v1_audit_query_get",
         "security": [
           {
@@ -487,7 +597,7 @@
     "/v1/audit/sanctions": {
       "get": {
         "summary": "Query Sanctions Decisions",
-        "description": "Query sanctions decision audit trail (DYN-306).",
+        "description": "Query sanctions decision audit trail, tenant-scoped (DYN-475).",
         "operationId": "query_sanctions_decisions_v1_audit_sanctions_get",
         "security": [
           {
@@ -626,7 +736,7 @@
     "/v1/webhooks": {
       "get": {
         "summary": "List Webhooks",
-        "description": "List all active webhook registrations.",
+        "description": "List active webhook registrations belonging to the caller.\n\nSecrets are NOT included \u2014 only shown at creation time (DYN-405).",
         "operationId": "list_webhooks_v1_webhooks_get",
         "responses": {
           "200": {
@@ -635,7 +745,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/WebhookResponse"
+                    "$ref": "#/components/schemas/WebhookListResponse"
                   },
                   "type": "array",
                   "title": "Response List Webhooks V1 Webhooks Get"
@@ -652,7 +762,7 @@
       },
       "post": {
         "summary": "Register Webhook",
-        "description": "Register a new webhook endpoint. URL must use HTTPS.",
+        "description": "Register a new webhook endpoint. URL must use HTTPS.\n\nReturns the signing secret ONE TIME \u2014 store it securely (DYN-405).",
         "operationId": "register_webhook_v1_webhooks_post",
         "requestBody": {
           "content": {
@@ -670,7 +780,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WebhookResponse"
+                  "$ref": "#/components/schemas/WebhookCreateResponse"
                 }
               }
             }
@@ -696,7 +806,7 @@
     "/v1/webhooks/{webhook_id}": {
       "delete": {
         "summary": "Delete Webhook",
-        "description": "Remove a webhook registration.",
+        "description": "Remove a webhook registration. Returns 404 if not found or not owned.",
         "operationId": "delete_webhook_v1_webhooks__webhook_id__delete",
         "security": [
           {
@@ -734,7 +844,7 @@
     "/v1/webhooks/{webhook_id}/test": {
       "post": {
         "summary": "Test Webhook",
-        "description": "Send a test event to a webhook endpoint.",
+        "description": "Send a test event to a webhook endpoint. Returns 404 if not found or not owned.",
         "operationId": "test_webhook_v1_webhooks__webhook_id__test_post",
         "security": [
           {
@@ -904,89 +1014,6 @@
         ]
       }
     },
-    "/v1/admin/retention/run": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Trigger Retention Cleanup",
-        "description": "Manually trigger retention cleanup (deletes expired records).",
-        "operationId": "trigger_retention_cleanup_v1_admin_retention_run_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetentionRunResult"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
-      }
-    },
-    "/v1/admin/retention/dry-run": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Preview Retention Cleanup",
-        "description": "Preview retention cleanup without deleting anything.",
-        "operationId": "preview_retention_cleanup_v1_admin_retention_dry_run_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetentionRunResult"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
-      }
-    },
-    "/v1/admin/retention/status": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Get Retention Status",
-        "description": "Get last retention run status.",
-        "operationId": "get_retention_status_v1_admin_retention_status_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Get Retention Status V1 Admin Retention Status Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
-      }
-    },
     "/v1/badge/{entity_id}.json": {
       "get": {
         "summary": "Get Badge Json",
@@ -1121,171 +1148,6 @@
             }
           }
         }
-      }
-    },
-    "/v1/revenue/breakdown": {
-      "get": {
-        "tags": [
-          "Revenue"
-        ],
-        "summary": "Get Revenue Breakdown",
-        "description": "Return multi-dimensional revenue breakdown.\n\nAggregates revenue by channel (x402, api_key, stripe), endpoint, and tier.\nIncludes COGS and gross margin calculations.\n\nRequires API key authentication.\n\nArgs:\n    period: Time period for aggregation (default: current_month)\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    RevenueBreakdown with complete financial analytics",
-        "operationId": "get_revenue_breakdown_v1_revenue_breakdown_get",
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "period",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(current_month|previous_month|last_7_days|last_30_days)$",
-              "description": "Aggregation period",
-              "default": "current_month",
-              "title": "Period"
-            },
-            "description": "Aggregation period"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RevenueBreakdown"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/revenue/customers": {
-      "get": {
-        "tags": [
-          "Revenue"
-        ],
-        "summary": "Get Customer Revenues",
-        "description": "Return per-customer revenue attribution.\n\nLists revenue attributed to each customer (API key) in the specified period.\n\nRequires API key authentication.\n\nArgs:\n    period: Time period for aggregation (default: current_month)\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    List of CustomerRevenue objects",
-        "operationId": "get_customer_revenues_v1_revenue_customers_get",
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "period",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(current_month|previous_month|last_7_days|last_30_days)$",
-              "description": "Aggregation period",
-              "default": "current_month",
-              "title": "Period"
-            },
-            "description": "Aggregation period"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CustomerRevenue"
-                  },
-                  "title": "Response Get Customer Revenues V1 Revenue Customers Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/revenue/cogs": {
-      "get": {
-        "tags": [
-          "Revenue"
-        ],
-        "summary": "Get Cogs Summary",
-        "description": "Return COGS summary per external API.\n\nLists cost of goods sold for each external API (OpenSanctions, KVK, etc.).\nAll-time aggregation.\n\nRequires API key authentication.\n\nArgs:\n    api_key: Validated API key from require_api_key dependency\n\nReturns:\n    List of COGSEntry objects",
-        "operationId": "get_cogs_summary_v1_revenue_cogs_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/COGSEntry"
-                  },
-                  "type": "array",
-                  "title": "Response Get Cogs Summary V1 Revenue Cogs Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
-      }
-    },
-    "/v1/admin/security/status": {
-      "get": {
-        "summary": "Get Security Status",
-        "description": "Get security status including encryption and isolation policies.\n\nReturns:\n    Security status with encryption config and RLS policy",
-        "operationId": "get_security_status_v1_admin_security_status_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Get Security Status V1 Admin Security Status Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
       }
     },
     "/v1/self-verify": {
@@ -1776,36 +1638,10 @@
         ]
       }
     },
-    "/v1/admin/feedback/summary": {
-      "get": {
-        "summary": "Get Feedback Summary",
-        "description": "Get aggregated feedback summary (requires authentication, admin).\n\nReturns:\n    Dictionary with feedback counts by type",
-        "operationId": "get_feedback_summary_v1_admin_feedback_summary_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Get Feedback Summary V1 Admin Feedback Summary Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ]
-      }
-    },
     "/v1/reputation/score": {
       "post": {
         "summary": "Reputation Score",
-        "description": "Compute reputation score with trust decay for an entity.",
+        "description": "Compute reputation score with trust decay for an entity.\n\nIf trust_score/cluster/last_verified_at are omitted, runs a full entity\ncheck internally to obtain them (requires country field).",
         "operationId": "reputation_score_v1_reputation_score_post",
         "requestBody": {
           "content": {
@@ -1826,6 +1662,16 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Reputation Score V1 Reputation Score Post"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not cached (X-Response-Quality: cached) \u2014 no data source was called",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2009,7 +1855,7 @@
     "/v1/financial/health": {
       "get": {
         "summary": "Financial Health",
-        "description": "Get overall financial system health status.",
+        "description": "Get overall financial system health status.\n\nThe settlement fields are operator-wide and only disclosed to admin keys\n(#291); other callers do not receive them at all.",
         "operationId": "financial_health_v1_financial_health_get",
         "responses": {
           "200": {
@@ -2591,6 +2437,11 @@
         "summary": "Get Pricing",
         "description": "Get current dynamic pricing for all endpoints.\n\nReturns demand-adjusted prices with volume discounts applied.",
         "operationId": "get_pricing_v1_sales_pricing_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "monthly_calls",
@@ -2640,6 +2491,11 @@
         "summary": "Get Endpoint Pricing",
         "description": "Get dynamic pricing for a specific endpoint.\n\nArgs:\n    endpoint_path: API endpoint path (e.g., v1/entity/check)\n    monthly_calls: Caller's monthly usage for volume discount",
         "operationId": "get_endpoint_pricing_v1_sales_pricing__endpoint_path__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "endpoint_path",
@@ -2709,7 +2565,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
       }
     },
     "/v1/sales/recommendations": {
@@ -2720,6 +2581,11 @@
         "summary": "Get Recommendations",
         "description": "Get cross-sell recommendations based on current usage.\n\nAI agents calling one endpoint may benefit from complementary services.\n\nArgs:\n    current_endpoint: The endpoint path currently being used\n    trust_score: Optional trust score for context-aware recommendations",
         "operationId": "get_recommendations_v1_sales_recommendations_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "current_endpoint",
@@ -2777,10 +2643,27 @@
         }
       }
     },
+    "/v1/quickstart": {
+      "get": {
+        "summary": "Quickstart Guide",
+        "description": "Interactive quickstart guide \u2014 no auth required.\n\nReturns everything needed to make a first API call:\nendpoints, pricing, curl examples, and payment instructions.",
+        "operationId": "quickstart_guide_v1_quickstart_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/kyb/check": {
       "post": {
         "summary": "Kyb Check",
-        "description": "Full KYB (Know Your Business) verification.\n\nCombines entity trust check with sanctions screening and company\nregistration verification. Returns comprehensive KYB result with\nverification status, risk flags, and compliance recommendations.\n\nPriced at $1.25 per call via x402 (see ENDPOINT_PRICING).",
+        "description": "Full KYB (Know Your Business) verification.\n\nCombines entity trust check with sanctions screening and company\nregistration verification. Returns comprehensive KYB result with\nverification status, risk flags, and compliance recommendations.\n\nPriced at $1.50 per call via x402 (see ENDPOINT_PRICING).",
         "operationId": "kyb_check_v1_kyb_check_post",
         "requestBody": {
           "content": {
@@ -2805,6 +2688,16 @@
               }
             }
           },
+          "404": {
+            "description": "Not cached (X-Response-Quality: cached) \u2014 no data source was called",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2821,6 +2714,291 @@
             "APIKeyHeader": []
           }
         ]
+      }
+    },
+    "/v1/mcp/check-entity": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Mcp Check Entity",
+        "description": "Check entity trust score (MCP-compatible endpoint).",
+        "operationId": "mcp_check_entity_v1_mcp_check_entity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckEntityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/mcp/check-agent": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Mcp Check Agent",
+        "description": "Verify AI agent trust (MCP-compatible endpoint).",
+        "operationId": "mcp_check_agent_v1_mcp_check_agent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/mcp/trust-score": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Mcp Trust Score",
+        "description": "Quick trust score lookup (MCP-compatible endpoint).",
+        "operationId": "mcp_trust_score_v1_mcp_trust_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrustScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/mcp/verify-wallet": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Mcp Verify Wallet",
+        "description": "Check wallet trust score (MCP-compatible endpoint).",
+        "operationId": "mcp_verify_wallet_v1_mcp_verify_wallet_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyWalletRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/mcp/risk-score": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Mcp Risk Score",
+        "description": "Quick risk assessment (MCP-compatible endpoint).",
+        "operationId": "mcp_risk_score_v1_mcp_risk_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routers__mcp__RiskScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/x402/supported": {
+      "get": {
+        "tags": [
+          "x402"
+        ],
+        "summary": "Get Supported",
+        "description": "Return supported schemes and networks for this x402 resource server.\n\nResponse format follows x402 v2 spec SupportedKind structure.",
+        "operationId": "get_supported_x402_supported_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/x402/verify": {
+      "post": {
+        "tags": [
+          "x402"
+        ],
+        "summary": "Verify Payment",
+        "description": "Verify a PaymentPayload without settling.\n\nAccepts base64-encoded PaymentPayload JSON (same as PAYMENT-SIGNATURE header).\nReturns {isValid, payer, invalidReason, ...} without recording or settling.\n\nUsed by clients to pre-validate before submitting to the protected endpoint.",
+        "operationId": "verify_payment_x402_verify_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/x402/settle": {
+      "post": {
+        "tags": [
+          "x402"
+        ],
+        "summary": "Settle Payment",
+        "description": "Co-sign and broadcast a payment transaction.\n\nAccepts x402 spec request format:\n  - paymentPayload: base64-encoded PaymentPayload (PAYMENT-SIGNATURE header value)\n  - paymentRequirements: PaymentRequirements object (from PAYMENT-REQUIRED header)\n\nAlso accepts legacy format:\n  - payload: PaymentPayload JSON\n  - raw_transaction: base64 partially-signed Solana VersionedTransaction\n\nFor EVM payments, triggers settlement via on_chain_settlement.settle_evm_payment.\nReturns SettlementResponse-compatible JSON.",
+        "operationId": "settle_payment_x402_settle_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
       }
     },
     "/.well-known/security.txt": {
@@ -2844,6 +3022,60 @@
   },
   "components": {
     "schemas": {
+      "AgentProspect": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name",
+            "default": ""
+          },
+          "source": {
+            "$ref": "#/components/schemas/ProspectSource"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          },
+          "handles_sensitive_data": {
+            "type": "boolean",
+            "title": "Handles Sensitive Data",
+            "default": false
+          },
+          "uses_trust_service": {
+            "type": "boolean",
+            "title": "Uses Trust Service",
+            "default": false
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level",
+            "default": "unknown"
+          },
+          "pitch_type": {
+            "type": "string",
+            "title": "Pitch Type",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "source"
+        ],
+        "title": "AgentProspect"
+      },
       "AgentRevenue": {
         "properties": {
           "agent_id": {
@@ -2956,6 +3188,31 @@
         ],
         "title": "AlertSubscription",
         "description": "Subscription to compliance alerts."
+      },
+      "AnchorDisplay": {
+        "properties": {
+          "tiers": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tiers",
+            "description": "Tiers from most to least expensive"
+          },
+          "recommended_tier": {
+            "type": "string",
+            "title": "Recommended Tier",
+            "description": "'Most popular' badge tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiers",
+          "recommended_tier"
+        ],
+        "title": "AnchorDisplay",
+        "description": "Pricing display ordered Enterprise \u2192 Professional \u2192 Starter."
       },
       "BadgeData": {
         "properties": {
@@ -3163,6 +3420,82 @@
         "title": "CertificateVerifyResponse",
         "description": "Response for certificate verification."
       },
+      "CheckAgentRequest": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id",
+            "description": "Unique agent identifier"
+          },
+          "agent_name": {
+            "type": "string",
+            "title": "Agent Name",
+            "description": "Human-readable agent name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "agent_name"
+        ],
+        "title": "CheckAgentRequest"
+      },
+      "CheckEntityRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "title": "Entity Name",
+            "description": "Full legal name of the entity"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "description": "ISO country code (NL, BE, etc.)"
+          },
+          "kvk_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kvk Number"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country"
+        ],
+        "title": "CheckEntityRequest"
+      },
+      "ClassicRequest": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint",
+            "description": "API endpoint path to get upsell for"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "title": "ClassicRequest"
+      },
       "Cluster": {
         "type": "string",
         "enum": [
@@ -3336,6 +3669,60 @@
         "title": "CustomerUsageResponse",
         "description": "Complete usage response for customer dashboard (DYN-273)."
       },
+      "DashboardResponse": {
+        "properties": {
+          "total_revenue_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usd",
+            "description": "Total revenue across all streams"
+          },
+          "streams": {
+            "items": {
+              "$ref": "#/components/schemas/StreamDetail"
+            },
+            "type": "array",
+            "title": "Streams",
+            "description": "Breakdown of all 6 revenue streams"
+          },
+          "growth_signals": {
+            "items": {
+              "$ref": "#/components/schemas/GrowthSignal"
+            },
+            "type": "array",
+            "title": "Growth Signals",
+            "description": "Key growth and health indicators"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Aggregation period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Period start timestamp"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Period end timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_revenue_usd",
+          "streams",
+          "growth_signals",
+          "period",
+          "period_start",
+          "period_end"
+        ],
+        "title": "DashboardResponse",
+        "description": "Revenue intelligence dashboard aggregating all 6 streams."
+      },
       "DataCategory": {
         "type": "string",
         "enum": [
@@ -3343,7 +3730,8 @@
           "trust_scores",
           "audit_trail",
           "api_keys",
-          "webhook_deliveries"
+          "webhook_deliveries",
+          "funnel_telemetry"
         ],
         "title": "DataCategory"
       },
@@ -3392,6 +3780,21 @@
           "retention_days"
         ],
         "title": "DataInventoryItem"
+      },
+      "DeployedVersion": {
+        "properties": {
+          "commit": {
+            "type": "string",
+            "title": "Commit",
+            "description": "Git SHA baked into the image at build time; 'unknown' if not set"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commit"
+        ],
+        "title": "DeployedVersion",
+        "description": "Git commit the running image was built from. Admin-only.\n\nDeliberately not on /health, for the same reason as ProbePoolStats: the exact\nbuild a host is running is deployment detail, and SEC-MC-004 keeps that off an\nunauthenticated endpoint. It answers \"is commit X on prod?\" directly, instead\nof inferring it from /health's static version string and uptime."
       },
       "EnhancedCheckHint": {
         "properties": {
@@ -3737,6 +4140,76 @@
         "title": "FeedbackResponse",
         "description": "Confirmation that feedback was received."
       },
+      "FreedomResponse": {
+        "properties": {
+          "total_revenue_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Revenue Usd",
+            "description": "Total revenue in period"
+          },
+          "freedom_target_usd": {
+            "type": "number",
+            "title": "Freedom Target Usd",
+            "description": "Monthly freedom target in USD"
+          },
+          "progress_pct": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Progress Pct",
+            "description": "Progress toward freedom target (%)"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "description": "Aggregation period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Period start timestamp"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Period end timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_revenue_usd",
+          "freedom_target_usd",
+          "progress_pct",
+          "period",
+          "period_start",
+          "period_end"
+        ],
+        "title": "FreedomResponse",
+        "description": "Walker freedom tracker: progress toward $10k/month target."
+      },
+      "GrowthSignal": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal",
+            "description": "Signal name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "Signal value (numeric or text)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "value"
+        ],
+        "title": "GrowthSignal",
+        "description": "Indicator of business growth or health."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3913,6 +4386,90 @@
         "title": "KeyCreateResponse",
         "description": "Response after creating a new API key. Plaintext key shown only once."
       },
+      "KeyUpgradeResponse": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "title": "Key Id",
+            "description": "Key identifier (SHA-256 hash prefix)"
+          },
+          "previous_tier": {
+            "type": "string",
+            "title": "Previous Tier",
+            "description": "Tier before upgrade"
+          },
+          "new_tier": {
+            "type": "string",
+            "title": "New Tier",
+            "description": "Tier after upgrade"
+          },
+          "monthly_limit": {
+            "type": "integer",
+            "title": "Monthly Limit",
+            "description": "New monthly request limit"
+          },
+          "payment_amount_usdc": {
+            "type": "number",
+            "title": "Payment Amount Usdc",
+            "description": "Amount paid in USDC"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key_id",
+          "previous_tier",
+          "new_tier",
+          "monthly_limit",
+          "payment_amount_usdc"
+        ],
+        "title": "KeyUpgradeResponse",
+        "description": "Response after upgrading an API key tier via x402 payment."
+      },
+      "KeyUsageResponse": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "title": "Key Id",
+            "description": "Key identifier (SHA-256 hash prefix)"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "description": "Current pricing tier"
+          },
+          "monthly_usage": {
+            "type": "integer",
+            "title": "Monthly Usage",
+            "description": "Requests used this billing period"
+          },
+          "monthly_limit": {
+            "type": "integer",
+            "title": "Monthly Limit",
+            "description": "Maximum requests allowed this period"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining",
+            "description": "Requests remaining this period"
+          },
+          "usage_percent": {
+            "type": "number",
+            "title": "Usage Percent",
+            "description": "Percentage of quota used (0-100)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key_id",
+          "tier",
+          "monthly_usage",
+          "monthly_limit",
+          "remaining",
+          "usage_percent"
+        ],
+        "title": "KeyUsageResponse",
+        "description": "Response showing current API key usage and remaining quota."
+      },
       "LegalDocument": {
         "properties": {
           "document_type": {
@@ -3958,6 +4515,433 @@
         ],
         "title": "LegalDocument",
         "description": "Legal document (privacy policy, terms of service, or DPA)."
+      },
+      "OracleBatchStatus": {
+        "properties": {
+          "queue_size": {
+            "type": "integer",
+            "title": "Queue Size",
+            "description": "Number of submissions pending flush"
+          },
+          "oracle_enabled": {
+            "type": "boolean",
+            "title": "Oracle Enabled"
+          },
+          "circuit_breaker_state": {
+            "type": "string",
+            "title": "Circuit Breaker State"
+          },
+          "gas_budget_wei": {
+            "type": "integer",
+            "title": "Gas Budget Wei",
+            "description": "0 = unlimited"
+          },
+          "gas_used_total_wei": {
+            "type": "integer",
+            "title": "Gas Used Total Wei"
+          },
+          "gas_remaining_wei": {
+            "type": "integer",
+            "title": "Gas Remaining Wei",
+            "description": "0 = unlimited"
+          },
+          "submissions_total": {
+            "type": "integer",
+            "title": "Submissions Total"
+          },
+          "submissions_confirmed": {
+            "type": "integer",
+            "title": "Submissions Confirmed"
+          },
+          "submissions_failed": {
+            "type": "integer",
+            "title": "Submissions Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queue_size",
+          "oracle_enabled",
+          "circuit_breaker_state",
+          "gas_budget_wei",
+          "gas_used_total_wei",
+          "gas_remaining_wei",
+          "submissions_total",
+          "submissions_confirmed",
+          "submissions_failed"
+        ],
+        "title": "OracleBatchStatus",
+        "description": "Status of the oracle batch queue."
+      },
+      "OracleConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "chain_id": {
+            "type": "integer",
+            "title": "Chain Id"
+          },
+          "contract_address": {
+            "type": "string",
+            "title": "Contract Address"
+          },
+          "batch_size": {
+            "type": "integer",
+            "title": "Batch Size"
+          },
+          "batch_interval": {
+            "type": "integer",
+            "title": "Batch Interval"
+          },
+          "gas_budget_wei": {
+            "type": "integer",
+            "title": "Gas Budget Wei"
+          },
+          "evidence_base_url": {
+            "type": "string",
+            "title": "Evidence Base Url"
+          },
+          "rpc_configured": {
+            "type": "boolean",
+            "title": "Rpc Configured",
+            "description": "True if oracle_rpc_url is set"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "chain_id",
+          "contract_address",
+          "batch_size",
+          "batch_interval",
+          "gas_budget_wei",
+          "evidence_base_url",
+          "rpc_configured"
+        ],
+        "title": "OracleConfig",
+        "description": "Snapshot of active oracle configuration (no secrets)."
+      },
+      "OracleSubmission": {
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "title": "Submission Id",
+            "description": "Unique submission identifier"
+          },
+          "entity_hash": {
+            "type": "string",
+            "title": "Entity Hash"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score"
+          },
+          "tag": {
+            "$ref": "#/components/schemas/OracleTag"
+          },
+          "report_hash": {
+            "type": "string",
+            "title": "Report Hash"
+          },
+          "request_hash": {
+            "type": "string",
+            "title": "Request Hash"
+          },
+          "evidence_uri": {
+            "type": "string",
+            "title": "Evidence Uri",
+            "description": "HTTP URL to full report (responseURI)"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubmissionStatus",
+            "default": "pending"
+          },
+          "tx_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tx Hash"
+          },
+          "gas_used_wei": {
+            "type": "integer",
+            "title": "Gas Used Wei",
+            "default": 0
+          },
+          "queued_at": {
+            "type": "number",
+            "title": "Queued At",
+            "description": "Unix timestamp when queued"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submission_id",
+          "entity_hash",
+          "trust_score",
+          "tag",
+          "report_hash",
+          "request_hash",
+          "evidence_uri",
+          "queued_at"
+        ],
+        "title": "OracleSubmission",
+        "description": "Internal record for a single oracle submission."
+      },
+      "OracleSubmissionRequest": {
+        "properties": {
+          "entity_hash": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Entity Hash",
+            "description": "Hex-encoded hash identifying the entity"
+          },
+          "trust_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trust Score",
+            "description": "0-100 trust score (maps to ERC-8004 uint8 response)"
+          },
+          "tag": {
+            "$ref": "#/components/schemas/OracleTag",
+            "description": "Validation category"
+          },
+          "report_hash": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Report Hash",
+            "description": "Hex-encoded hash of the full report content"
+          },
+          "request_hash": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Request Hash",
+            "description": "Hex-encoded hash of the originating validation request"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_hash",
+          "trust_score",
+          "tag",
+          "report_hash",
+          "request_hash"
+        ],
+        "title": "OracleSubmissionRequest",
+        "description": "API request model for a single oracle validation submission."
+      },
+      "OracleTag": {
+        "type": "string",
+        "enum": [
+          "KYB",
+          "ENTITY_TRUST",
+          "COMPLIANCE"
+        ],
+        "title": "OracleTag"
+      },
+      "PitchMessage": {
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "title": "Prospect Id"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "offer": {
+            "type": "string",
+            "title": "Offer",
+            "default": "100 free checks/month, no commitment"
+          },
+          "demo_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo Score"
+          },
+          "demo_risk_factors": {
+            "type": "integer",
+            "title": "Demo Risk Factors",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "prospect_id",
+          "subject",
+          "body"
+        ],
+        "title": "PitchMessage"
+      },
+      "PlanRecommendation": {
+        "properties": {
+          "current_plan": {
+            "type": "string",
+            "title": "Current Plan"
+          },
+          "recommended_plan": {
+            "type": "string",
+            "title": "Recommended Plan"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "options": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Options",
+            "description": "A/B choices"
+          },
+          "savings_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Savings Usd",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_plan",
+          "recommended_plan",
+          "reason",
+          "options"
+        ],
+        "title": "PlanRecommendation",
+        "description": "Menu upsell: recommended plan based on usage analysis."
+      },
+      "ProbePoolStats": {
+        "properties": {
+          "max_workers": {
+            "type": "integer",
+            "title": "Max Workers",
+            "description": "Pool size; 0 before the pool is first used"
+          },
+          "active": {
+            "type": "integer",
+            "title": "Active",
+            "description": "Workers currently running a probe"
+          },
+          "queued": {
+            "type": "integer",
+            "title": "Queued",
+            "description": "Submissions waiting for a worker"
+          },
+          "saturated": {
+            "type": "boolean",
+            "title": "Saturated",
+            "description": "No spare capacity: every worker busy, or work already queued"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_workers",
+          "active",
+          "queued",
+          "saturated"
+        ],
+        "title": "ProbePoolStats",
+        "description": "Blocking-probe thread pool snapshot. Admin-only.\n\nDeliberately not on /health: pool capacity is config detail and the live counts\ndescribe current load, neither of which SEC-MC-004 allows on an unauthenticated\nendpoint."
+      },
+      "ProspectSource": {
+        "type": "string",
+        "enum": [
+          "bazaar",
+          "erc8004"
+        ],
+        "title": "ProspectSource"
+      },
+      "ProspectorStats": {
+        "properties": {
+          "total_discovered": {
+            "type": "integer",
+            "title": "Total Discovered",
+            "default": 0
+          },
+          "total_qualified": {
+            "type": "integer",
+            "title": "Total Qualified",
+            "default": 0
+          },
+          "total_pitched": {
+            "type": "integer",
+            "title": "Total Pitched",
+            "default": 0
+          },
+          "total_converted": {
+            "type": "integer",
+            "title": "Total Converted",
+            "default": 0
+          },
+          "conversion_rate": {
+            "type": "number",
+            "title": "Conversion Rate",
+            "default": 0.0
+          },
+          "by_source": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Source"
+          },
+          "by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Category"
+          }
+        },
+        "type": "object",
+        "title": "ProspectorStats"
       },
       "ProviderRegistration": {
         "properties": {
@@ -4130,22 +5114,50 @@
             "minLength": 1,
             "title": "Entity Name"
           },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code",
+            "default": ""
+          },
           "trust_score": {
-            "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Trust Score",
-            "description": "Latest trust score"
+            "description": "Latest trust score (auto-computed if omitted)"
           },
           "cluster": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Cluster",
-            "description": "Current cluster assignment"
+            "description": "Current cluster assignment (auto-computed if omitted)"
           },
           "last_verified_at": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Last Verified At",
-            "description": "Unix timestamp of last verification"
+            "description": "Unix timestamp of last verification (defaults to now)"
           },
           "verification_count": {
             "type": "integer",
@@ -4169,10 +5181,7 @@
         },
         "type": "object",
         "required": [
-          "entity_name",
-          "trust_score",
-          "cluster",
-          "last_verified_at"
+          "entity_name"
         ],
         "title": "ReputationScoreRequest"
       },
@@ -4384,31 +5393,72 @@
         "title": "RiskResponse",
         "description": "Lighter risk-only response from /v1/risk/score."
       },
-      "RiskScoreRequest": {
+      "RolloverOffer": {
         "properties": {
-          "entity_name": {
+          "agent_id": {
             "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Entity Name",
-            "description": "Legal entity name"
+            "title": "Agent Id"
           },
-          "country": {
+          "cumulative_spend_usd": {
+            "type": "number",
+            "title": "Cumulative Spend Usd"
+          },
+          "credit_amount_usd": {
+            "type": "number",
+            "title": "Credit Amount Usd"
+          },
+          "target_plan": {
             "type": "string",
-            "maxLength": 2,
-            "minLength": 2,
-            "title": "Country",
-            "description": "ISO 3166-1 alpha-2 country code"
+            "title": "Target Plan"
+          },
+          "effective_first_month_usd": {
+            "type": "number",
+            "title": "Effective First Month Usd"
+          },
+          "pitch": {
+            "type": "string",
+            "title": "Pitch"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
-          "entity_name",
-          "country"
+          "agent_id",
+          "cumulative_spend_usd",
+          "credit_amount_usd",
+          "target_plan",
+          "effective_first_month_usd",
+          "pitch"
         ],
-        "title": "RiskScoreRequest",
-        "description": "Lighter risk-only request - faster, fewer sources."
+        "title": "RolloverOffer",
+        "description": "Credit past spend toward upgrade."
+      },
+      "RolloverRequest": {
+        "properties": {
+          "api_key_id": {
+            "type": "string",
+            "title": "Api Key Id",
+            "description": "API key identifier"
+          },
+          "cumulative_spend_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cumulative Spend Usd",
+            "description": "Total historical spend"
+          },
+          "last_30d_spend_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Last 30D Spend Usd",
+            "description": "Spend in last 30 days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key_id",
+          "cumulative_spend_usd",
+          "last_30d_spend_usd"
+        ],
+        "title": "RolloverRequest"
       },
       "ScoreHistoryEntry": {
         "properties": {
@@ -4644,6 +5694,46 @@
         ],
         "title": "SourceStatus"
       },
+      "StreamDetail": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Stream identifier"
+          },
+          "revenue_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Revenue Usd",
+            "description": "Revenue in USD for this stream"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Human-readable description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "revenue_usd",
+          "description"
+        ],
+        "title": "StreamDetail",
+        "description": "Detail for a single revenue stream in the dashboard."
+      },
+      "SubmissionStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "queued",
+          "submitted",
+          "confirmed",
+          "failed",
+          "skipped"
+        ],
+        "title": "SubmissionStatus"
+      },
       "SubscriptionTier": {
         "type": "string",
         "enum": [
@@ -4684,6 +5774,31 @@
           "weight"
         ],
         "title": "TopFactor"
+      },
+      "TrackRequest": {
+        "properties": {
+          "api_key_id": {
+            "type": "string",
+            "title": "Api Key Id",
+            "description": "API key identifier"
+          },
+          "model": {
+            "$ref": "#/components/schemas/UpsellModel",
+            "description": "Which upsell model was shown"
+          },
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted",
+            "description": "Whether the offer was accepted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key_id",
+          "model",
+          "accepted"
+        ],
+        "title": "TrackRequest"
       },
       "TreasuryBalance": {
         "properties": {
@@ -4901,6 +6016,22 @@
             "description": "True if result was served from cache (cached tier)",
             "default": false
           },
+          "source_data_dates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Source Data Dates",
+            "description": "ISO timestamps when each data source was last retrieved"
+          },
+          "disclaimers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disclaimers",
+            "description": "Legal disclaimers for data sources used in this response"
+          },
           "version": {
             "type": "string",
             "title": "Version",
@@ -4920,6 +6051,20 @@
         ],
         "title": "TrustResponse",
         "description": "Full trust intelligence response from /v1/entity/check."
+      },
+      "TrustScoreRequest": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Entity identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id"
+        ],
+        "title": "TrustScoreRequest"
       },
       "TrustSignal": {
         "properties": {
@@ -4965,6 +6110,88 @@
         ],
         "title": "TrustSignal",
         "description": "Individual trust signal verification result."
+      },
+      "UpsellModel": {
+        "type": "string",
+        "enum": [
+          "classic",
+          "menu",
+          "anchor",
+          "rollover"
+        ],
+        "title": "UpsellModel"
+      },
+      "UpsellOffer": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/UpsellModel"
+          },
+          "trigger_product": {
+            "type": "string",
+            "title": "Trigger Product",
+            "description": "Product that triggered the upsell"
+          },
+          "recommended_product": {
+            "type": "string",
+            "title": "Recommended Product",
+            "description": "Product being upsold"
+          },
+          "pitch": {
+            "type": "string",
+            "title": "Pitch",
+            "description": "Personalized pitch message"
+          },
+          "price_multiplier": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Price Multiplier",
+            "description": "How much more than trigger product"
+          },
+          "estimated_value_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Estimated Value Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "trigger_product",
+          "recommended_product",
+          "pitch",
+          "price_multiplier",
+          "estimated_value_usd"
+        ],
+        "title": "UpsellOffer"
+      },
+      "UpsellStats": {
+        "properties": {
+          "total_offers": {
+            "type": "integer",
+            "title": "Total Offers",
+            "default": 0
+          },
+          "by_model": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Model"
+          },
+          "conversion_rate": {
+            "type": "number",
+            "title": "Conversion Rate",
+            "default": 0.0
+          },
+          "revenue_from_upsells_usd": {
+            "type": "number",
+            "title": "Revenue From Upsells Usd",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "UpsellStats",
+        "description": "Analytics for upsell performance."
       },
       "UsageCalls": {
         "properties": {
@@ -5250,6 +6477,26 @@
         "title": "VerificationResponse",
         "description": "Extended verification data returned by /v1/verify/{entity_id} endpoint."
       },
+      "VerifyWalletRequest": {
+        "properties": {
+          "wallet_address": {
+            "type": "string",
+            "title": "Wallet Address",
+            "description": "Blockchain wallet address"
+          },
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id",
+            "description": "CAIP-2 chain ID",
+            "default": "eip155:8453"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet_address"
+        ],
+        "title": "VerifyWalletRequest"
+      },
       "WalletHealth": {
         "properties": {
           "treasury_balance_usdc": {
@@ -5265,7 +6512,34 @@
           "pending_settlements": {
             "type": "integer",
             "minimum": 0.0,
-            "title": "Pending Settlements"
+            "title": "Pending Settlements",
+            "description": "Pending rows still inside the sweep's retry budget (in-flight). Rows the sweep cannot rebuild into a payment are charged the same budget (#246), so they drain to exhausted_settlements rather than sitting here forever"
+          },
+          "exhausted_settlements": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Exhausted Settlements",
+            "description": "Pending rows whose sweep_attempts reached MAX_RETRIES: credited, never settled, no longer retried. Not included in pending_settlements",
+            "default": 0
+          },
+          "failed_settlements": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed Settlements",
+            "description": "Ledger rows the startup sweep resolved to FAILED (#196). These are no longer counted by pending_settlements, so without this they would disappear from the health view entirely.",
+            "default": 0
+          },
+          "settlement_configured": {
+            "type": "boolean",
+            "title": "Settlement Configured",
+            "description": "True when the EVM settler would run (SETTLEMENT_RPC_URL and SETTLEMENT_PRIVATE_KEY both set). EVM leg only; see solana_settlement_configured for the other leg. When False, EVM rows stay pending indefinitely",
+            "default": false
+          },
+          "solana_settlement_configured": {
+            "type": "boolean",
+            "title": "Solana Settlement Configured",
+            "description": "True when the Solana settler would run (SOLANA_RPC_URL and SOLANA_FEE_PAYER_PRIVATE_KEY both set). All three settlement counters above are chain-mixed, so both flags must be read to know whether they are trustworthy. When False, Solana rows stay pending indefinitely",
+            "default": false
           },
           "total_revenue_usdc": {
             "type": "number",
@@ -5276,6 +6550,12 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Agents Tracked"
+          },
+          "failed_settlement_queue_depth": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed Settlement Queue Depth",
+            "default": 0
           }
         },
         "type": "object",
@@ -5349,17 +6629,7 @@
         ],
         "title": "WebhookCreateRequest"
       },
-      "WebhookEventType": {
-        "type": "string",
-        "enum": [
-          "trust.score.changed",
-          "sanctions.match.new",
-          "trust.level.downgrade",
-          "certificate.expired"
-        ],
-        "title": "WebhookEventType"
-      },
-      "WebhookResponse": {
+      "WebhookCreateResponse": {
         "properties": {
           "id": {
             "type": "string",
@@ -5399,7 +6669,102 @@
           "active",
           "created_at"
         ],
-        "title": "WebhookResponse"
+        "title": "WebhookCreateResponse",
+        "description": "Response for POST /v1/webhooks \u2014 includes secret (one-time display)."
+      },
+      "WebhookEventType": {
+        "type": "string",
+        "enum": [
+          "trust.score.changed",
+          "sanctions.match.new",
+          "trust.level.downgrade",
+          "certificate.expired"
+        ],
+        "title": "WebhookEventType"
+      },
+      "WebhookListResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "events",
+          "active",
+          "created_at"
+        ],
+        "title": "WebhookListResponse",
+        "description": "Response for GET /v1/webhooks \u2014 secret excluded (DYN-405)."
+      },
+      "app__models__request__RiskScoreRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Entity Name",
+            "description": "Legal entity name"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country"
+        ],
+        "title": "RiskScoreRequest",
+        "description": "Lighter risk-only request - faster, fewer sources."
+      },
+      "app__routers__mcp__RiskScoreRequest": {
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "title": "Entity Name",
+            "description": "Full legal name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "description": "ISO country code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_name",
+          "country"
+        ],
+        "title": "RiskScoreRequest"
       }
     },
     "securitySchemes": {
