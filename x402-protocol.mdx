@@ -3,34 +3,24 @@ title: "x402 Protocol"
 description: "Pay-per-use USDC micropayments for AI agents — no subscription required"
 ---
 
+{/* Generated from docs/x402-protocol.md in jwconsultancyteam/limitguard-ai by scripts/sync_public_repos.py. Edit the source, not this page. */}
+
 LimitGuard implements the x402 V2 micropayment protocol for AI agent pay-per-use access. No subscription or API key required — agents pay per call in USDC.
 
 ## Overview
 
-x402 extends HTTP with a payment layer. The flow is simple:
+x402 extends HTTP with a payment layer:
 
-<Steps>
-  <Step title="Request without payment">
-    Agent makes a normal API request.
-  </Step>
-  <Step title="Receive HTTP 402">
-    Server returns payment requirements — chain, amount, recipient, contract address.
-  </Step>
-  <Step title="Build payment signature">
-    Agent constructs an EIP-3009 `TransferWithAuthorization` signature.
-  </Step>
-  <Step title="Retry with X-PAYMENT header">
-    Agent retries the same request with the base64-encoded payment header.
-  </Step>
-  <Step title="Receive response">
-    Server verifies signature, processes the request, and returns the result.
-  </Step>
-</Steps>
+1. Agent makes request without payment
+2. Server returns HTTP 402 with payment requirements
+3. Agent constructs EIP-3009 `TransferWithAuthorization` signature
+4. Agent retries with `X-PAYMENT` header
+5. Server verifies signature, processes request
 
 ## Supported Networks
 
 | Network | CAIP-2 Chain ID | USDC Contract |
-|---------|----------------|---------------|
+|---|---|---|
 | Base Mainnet | `eip155:8453` | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 | Base Sepolia | `eip155:84532` | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
 | Solana Mainnet | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
@@ -38,56 +28,92 @@ x402 extends HTTP with a payment layer. The flow is simple:
 
 ## Step 1: Discover Payment Requirements
 
-Make a request without payment to get the requirements:
-
 ```bash
+# Request without payment
 curl -X POST https://api.limitguard.ai/v1/entity/check \
   -H "Content-Type: application/json" \
   -d '{"entity_name": "Acme Corp BV", "country": "NL"}'
 ```
 
-```json HTTP 402 Response
+Response (HTTP 402):
+
+```json
 {
-  "x402Version": "2",
+  "x402Version": 2,
   "error": "Payment Required",
+  "errorCode": "payment_required",
+  "resource": {
+    "url": "https://api.limitguard.ai/v1/entity/check",
+    "description": "Full entity trust check across multiple verification layers...",
+    "mimeType": "application/json"
+  },
   "accepts": [
     {
-      "chainId": "eip155:8453",
-      "currency": "USDC",
-      "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "scheme": "exact",
+      "network": "eip155:8453",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       "amount": "850000",
-      "decimals": 6,
-      "recipient": "0xFacilitatorAddress",
-      "description": "LimitGuard API call (0.85 USDC)"
+      "maxAmountRequired": "850000",
+      "resource": "https://api.limitguard.ai/v1/entity/check",
+      "description": "Full entity trust check across multiple verification layers...",
+      "mimeType": "application/json",
+      "payTo": "0xFacilitatorAddress",
+      "maxTimeoutSeconds": 60,
+      "extra": {"name": "USD Coin", "version": "2", "decimals": 6}
     },
     {
-      "chainId": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-      "currency": "USDC",
-      "contractAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "scheme": "exact",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "amount": "850000",
-      "decimals": 6,
-      "recipient": "SolanaFacilitatorAddress",
-      "description": "LimitGuard API call (0.85 USDC)"
+      "maxAmountRequired": "850000",
+      "resource": "https://api.limitguard.ai/v1/entity/check",
+      "description": "Full entity trust check across multiple verification layers...",
+      "mimeType": "application/json",
+      "payTo": "SolanaFacilitatorAddress",
+      "maxTimeoutSeconds": 60,
+      "extra": {"name": "USDC", "version": "2", "decimals": 6}
     }
-  ]
+  ],
+  "extensions": {"bazaar": {"info": {"...": "endpoint input/output"}, "schema": {"...": "JSON Schema"}}}
 }
 ```
 
-## Step 2: Build EVM Payment (Base / EIP-3009)
+Each `accepts` entry is a standard x402 `PaymentRequirements` object, so official
+clients (npm `x402-fetch`) can consume it directly. Notes on individual fields:
 
-<CodeGroup>
+| Field | Meaning |
+|---|---|
+| `network` | CAIP-2 chain ID — the field official clients read (there is no `chainId` here) |
+| `asset` | USDC contract address on that chain |
+| `amount` / `maxAmountRequired` | Price in 6-decimal USDC units; both carry the same value |
+| `payTo` | Address to pay — chain-specific, read it from the response rather than hardcoding |
+| `extra.name` / `extra.version` | EIP-712 domain values to sign with on EVM chains (informational on Solana) |
+| `extra.decimals` | USDC decimals (6) |
 
-```python Python
+Every 402 also carries additive recovery hints under `extensions.bazaar.info`, so an agent without a wallet can still get started (full reference: docs/errors.md):
+
+| Field | Value |
+|---|---|
+| `extensions.bazaar.info.recovery.url` | `https://api.limitguard.ai/v1/quickstart` (+ a `curl` one-liner) |
+| `extensions.bazaar.info.documentation_url` | `https://docs.limitguard.ai/x402-protocol` |
+| `extensions.bazaar.info.sandbox.curl` | `POST /v1/keys/create {"email": "...", "tier": "sandbox"}` → free `lg_sandbox_` key, no wallet |
+
+The same body is mirrored base64-encoded in the `PAYMENT-REQUIRED` response header.
+
+## Step 2: Build EVM Payment (Base/EIP-3009)
+
+```python
 import base64, json, secrets, time
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 def build_x402_payment(
     chain_id: str,          # e.g. "eip155:8453"
-    amount: int,            # in USDC 6-decimal units
-    sender_key: str,        # private key (hex)
-    recipient: str,         # facilitator address
-    usdc_address: str,      # USDC contract address
+    amount: int,             # in USDC 6-decimal units
+    sender_key: str,         # private key (hex)
+    recipient: str,          # facilitator address
+    usdc_address: str,       # USDC contract address
 ) -> str:
     sender = Account.from_key(sender_key).address
     chain_num = int(chain_id.split(":")[1])  # 8453
@@ -147,74 +173,9 @@ def build_x402_payment(
     return base64.b64encode(json.dumps(payload).encode()).decode()
 ```
 
-```javascript JavaScript
-import { ethers } from "ethers";
-
-async function buildX402Payment(
-  chainId,      // "eip155:8453"
-  amount,       // 850000 (USDC 6-decimal)
-  signer,       // ethers.Wallet
-  recipient,    // facilitator address
-  usdcAddress   // USDC contract
-) {
-  const chainNum = parseInt(chainId.split(":")[1]);
-  const nonce = "0x" + [...crypto.getRandomValues(new Uint8Array(32))]
-    .map((b) => b.toString(16).padStart(2, "0")).join("");
-  const now = Math.floor(Date.now() / 1000);
-
-  const domain = {
-    name: "USD Coin",
-    version: "2",
-    chainId: chainNum,
-    verifyingContract: usdcAddress,
-  };
-
-  const types = {
-    TransferWithAuthorization: [
-      { name: "from", type: "address" },
-      { name: "to", type: "address" },
-      { name: "value", type: "uint256" },
-      { name: "validAfter", type: "uint256" },
-      { name: "validBefore", type: "uint256" },
-      { name: "nonce", type: "bytes32" },
-    ],
-  };
-
-  const message = {
-    from: signer.address,
-    to: recipient,
-    value: amount,
-    validAfter: now - 10,
-    validBefore: now + 300,
-    nonce: nonce,
-  };
-
-  const signature = await signer.signTypedData(domain, types, message);
-
-  const payload = {
-    chainId,
-    amount: String(amount),
-    sender: signer.address,
-    recipient,
-    nonce,
-    signature,
-    validAfter: now - 10,
-    validBefore: now + 300,
-  };
-
-  return btoa(JSON.stringify(payload));
-}
-```
-
-</CodeGroup>
-
 ## Step 3: Make Paid Request
 
-<CodeGroup>
-
-```python Python
-import httpx
-
+```python
 x_payment = build_x402_payment(
     chain_id="eip155:8453",
     amount=850_000,          # $0.85 for /v1/entity/check (fresh)
@@ -223,57 +184,224 @@ x_payment = build_x402_payment(
     usdc_address="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 )
 
+import httpx
 response = httpx.post(
     "https://api.limitguard.ai/v1/entity/check",
     headers={"X-PAYMENT": x_payment, "Content-Type": "application/json"},
     json={"entity_name": "Acme Corp BV", "country": "NL"},
 )
-print(response.json())
 ```
 
-```bash curl
+## Response Headers
+
+| Header | Value | Meaning |
+|---|---|---|
+| `X-Payment-Verified` | `true` | Payment accepted |
+| `X-Payment-Amount` | `850000` | Amount verified (6-decimal USDC) |
+| `X-Payment-Fallback` | `true` | Circuit breaker triggered (rare) |
+| `PAYMENT-RESPONSE` | base64 JSON | `transaction` is the tx hash for settled transfers (see below), `payer` is the verified sender |
+
+## Replay Prevention
+
+Each nonce can only be used once (Redis, 5-minute TTL). Reusing a nonce returns HTTP 402 with "Nonce already used (replay detected)". Settled-transfer tx hashes (see below) use a longer 24-hour replay window instead.
+
+## Settled Transfer Fallback (EVM)
+
+If your agent settles by sending USDC directly to the `payTo` address from the 402
+response, retry the request with the transaction hash instead of a signature. The
+retry must also carry the `X-Payment-Challenge` token from the **same 402 response you
+were quoted with** (also in the settled-transfer `accepts` entry as `extra.challengeId`):
+
+```bash
+# 1. Request the resource with no payment header: the 402 quotes the price and
+#    mints a challenge token for this resource, delivered only to you.
+curl -si -X POST https://api.limitguard.ai/v1/entity/check \
+  -H "Content-Type: application/json" \
+  -d '{"entity_name": "Acme Corp BV", "country": "NL"}' | grep -i x-payment-challenge
+
+# 2. Send the USDC to payTo, wait for it to confirm.
+
+# 3. Redeem with the tx hash AND the challenge.
 curl -X POST https://api.limitguard.ai/v1/entity/check \
-  -H "X-PAYMENT: <base64-encoded-payment>" \
+  -H "X-PAYMENT: 0x<64-hex tx hash>" \
+  -H "X-Payment-Challenge: <token from step 1>" \
   -H "Content-Type: application/json" \
   -d '{"entity_name": "Acme Corp BV", "country": "NL"}'
 ```
 
-</CodeGroup>
+JSON form (base64 in `X-PAYMENT` or `PAYMENT-SIGNATURE`): `{"chainId": "eip155:8453", "txHash": "0x…"}`.
 
-## Response Headers
+Every 402 advertises this path as the `accepts` entry with `scheme: "settled-transfer"`, whose
+`extra` carries the header name and these rules. The official x402 clients skip it — they only
+select schemes they have registered — so it costs them nothing.
 
-On successful payment verification, these headers are included:
+LimitGuard verifies on-chain that the transaction succeeded, emitted a USDC `Transfer` of at
+least the endpoint price to `payTo`, and was mined within the last ~150 blocks (~5 minutes).
+Each hash is accepted once (24-hour replay window). A hash that is not yet mined returns
+402 `invalid_signature`; retry after confirmation. Solana uses `txSignature` (see above).
 
-| Header | Value | Meaning |
-|--------|-------|---------|
-| `X-Payment-Verified` | `true` | Payment accepted |
-| `X-Payment-Amount` | `850000` | Amount verified (6-decimal USDC) |
-| `X-Payment-Fallback` | `true` | Circuit breaker triggered (rare) |
+When a proof fails verification its replay claim is released so you can retry once the
+transaction confirms. That release is retried a bounded number of times (3 attempts); if it
+still fails, the claim is marked *stuck* rather than left indistinguishable from a real
+duplicate, and your next attempt with the same proof gets 402 `settlement_claim_stuck`
+(no automatic retry — the same response repeats for up to 24h) instead of a misleading
+`duplicate_settlement`. REST and MCP share this code path, so both transports give the same
+retry budget and the same message.
 
-## Replay Prevention
+Send the amount for a single call. A transfer is redeemed exactly once, so batching several
+calls' USDC into one gas-efficient transfer buys one call and forfeits the surplus — the
+excess is credited to the ledger and reported in `X-Payment-Amount`, but it is not refunded
+and cannot be spent on a later request.
 
-Each nonce can only be used once. Nonces are tracked in Redis with a 5-minute TTL. Reusing a nonce returns:
+### Why the challenge token (issue #205)
 
-```json
-HTTP 402
-{
-  "error": "Nonce already used (replay detected)"
-}
+A settled-transfer proof is just a public tx hash, with no signature binding it to whoever
+presents it. Before the challenge existed, a third party watching the `payTo` address
+on-chain could submit your hash before you did and be served your result. The challenge
+token is delivered only in the HTTP 402 you received — never on-chain — so a proof is now
+redeemable only together with the token minted for that resource, and the token is
+checked before the replay guard and before any on-chain lookup: a submission without it
+is refused with `402 settlement_challenge_required`, takes no claim on the hash, and
+leaves the hash redeemable by you.
+
+Rules:
+
+- The token is bound to the resource path it was quoted for. A token for `/v1/risk/score`
+  does not redeem a transfer for `/v1/entity/check`.
+- It expires with the quote (the same ~5-minute window a transfer must confirm within).
+  If it has expired, request a fresh quote (a bare request → 402) and retry with the new
+  token: your hash is still unclaimed and still yours.
+- It is single-use: once a proof has verified with it, it is spent.
+- The same header applies to a Solana `txSignature` for an already-confirmed transaction.
+- There is no grace period after which an unrelated submission is served anyway.
+
+What this does **not** do: it is not proof of wallet ownership. A party who requests
+their own 402 for the same resource ahead of time holds a token of their own and can
+still race you with it (the issue's own caveat for this direction). Submit your hash
+promptly after it confirms. The EIP-3009 (`PAYMENT-SIGNATURE`) path and the Solana
+partially-signed-transaction path are not exposed to this at all and need no token.
+
+### Verifying a settled-transfer proof via `/x402/verify`
+
+The same tx hash and challenge token can be redeemed against `POST /x402/verify`
+directly, without retrying the protected endpoint — useful for pre-validating a
+proof before spending it. Because `/x402/verify` has no request URL of its own to
+infer the resource from, you must say which resource the proof was quoted for, via
+the v2 envelope's `resource.url` **object** or a plain `resourcePath` **string**:
+
+```bash
+curl -X POST https://api.limitguard.ai/x402/verify \
+  -H "Content-Type: application/json" \
+  -H "X-Payment-Challenge: <token from your 402>" \
+  -d '{
+    "txHash": "0x<64-hex tx hash>",
+    "chainId": "eip155:8453",
+    "resourcePath": "/v1/entity/check"
+  }'
 ```
+
+Omitting the resource, or naming the wrong one, fails closed with
+`settlement_challenge_required` even for an otherwise-valid proof and token — see
+[Why the challenge token](#why-the-challenge-token-issue-205). `resource` must be an
+object with a `url` field (this endpoint's own convention, not the x402 spec's
+`accepts[].resource`, which is a plain string); a bare string there is not
+recognized and falls back to requiring `resourcePath` instead. `/x402/verify` never
+consumes the challenge token — only redeeming the proof against the protected
+endpoint does, so calling `/verify` first does not burn your one-time token. The
+same rules apply to a Solana `txSignature` settled-transfer proof.
 
 ## Quality Tiers with x402
 
-Control cost via the `X-Response-Quality` header. The amount in `X-PAYMENT` must match or exceed the price for the selected tier:
+Control cost via `X-Response-Quality` header:
 
-| Tier | /v1/entity/check | /v1/risk/score | /v1/kyb/check |
-|------|------------------|----------------|---------------|
-| `cached` | $0.10 (100,000) | $0.10 (100,000) | $0.25 (250,000) |
-| `fresh` | $0.85 (850,000) | $0.65 (650,000) | $1.50 (1,500,000) |
-| `enhanced` | $1.50 (1,500,000) | $1.00 (1,000,000) | $3.00 (3,000,000) |
+```python
+response = httpx.post(
+    "https://api.limitguard.ai/v1/entity/check",
+    headers={
+        "X-PAYMENT": x_payment_100000,  # $0.10 for cached
+        "X-Response-Quality": "cached",
+        "Content-Type": "application/json",
+    },
+    json={"entity_name": "Acme Corp BV", "country": "NL"},
+)
+```
 
-<Note>
-If the payment amount is insufficient for the requested tier, you'll receive HTTP 402 with the correct amount.
-</Note>
+The amount in `X-PAYMENT` must match or exceed the price for the selected tier:
+
+| Tier | /v1/entity/check amount |
+|---|---|
+| `cached` | 100,000 ($0.10) |
+| `fresh` | 850,000 ($0.85) |
+| `enhanced` | 1,500,000 ($1.50) |
+
+`cached` is served only from cache. If nothing is cached for the entity, the response is
+`404` with `errorCode: "not_cached"` and a `retry` block naming `X-Response-Quality: fresh`
+and its price; no data source is called (see docs/errors.md) and the request is not
+charged. The unpaid 402 quote for a `cached` request probes the cache first: on a
+confirmed miss it is priced at the `fresh` tier and carries
+`extensions.bazaar.info.cachedTierAvailable: false`, so a caller is not sold the cheap
+tier for a call that would deliver nothing. When a quote carries that flag, retry with
+`X-Response-Quality: fresh` or drop the header; the `amount` in the quote is already the
+fresh price, so paying it as-is also works. If the probe cannot run (cache unconfigured
+or unreachable) the cached price is quoted as before; a miss on the paid call is still
+not charged, because settlement is gated on the route's 2xx response. The probe's
+answer is subject to the per-entity limit: an anonymous caller gets at most 5 quotes
+per entity per hour on these four endpoints (the same counter that meters the checks
+themselves, see docs/rate-limits.md), then `429`, so cache state cannot be used to
+enumerate which entities have been checked.
+Fresh calls fill the cache, so "cached when available" means: after a fresh check of
+the same request (entity, country and the same identifiers -- a different KVK number is a
+different cache entry). A fresh call itself never reads a cache: it always runs the live check. The refill TTL differs by endpoint: 1 hour for
+`/v1/entity/check` and `/v1/kyb/check` (the trust-response cache), 7 days by default for
+`/v1/risk/score` and `/v1/reputation/score` (the sanctions cache). Every endpoint warms the
+cache its own `cached` tier reads, so `fresh` then `cached` on one endpoint works on its own;
+a fresh `/v1/entity/check` or `/v1/kyb/check` additionally warms the sanctions cache that
+`/v1/risk/score` and `/v1/reputation/score` read, but not the reverse.
+Both cache keys are case-insensitive and ignore surrounding whitespace, so a fresh check of
+`"Acme BV "` is hit by a later `cached` call for `"ACME BV"`.
+
+## Official x402 Client Payloads
+
+The official x402 clients (`@x402/fetch` and `x402-fetch` on npm, `x402` on PyPI) send a
+payload shaped differently from the flat one built in Step 2. Both of their shapes are
+accepted as-is — no adapter needed:
+
+```jsonc
+// EVM (exact scheme, EIP-3009)
+{
+  "x402Version": 2,
+  "scheme": "exact",
+  "network": "eip155:8453",
+  "payload": {
+    "signature": "0x...",
+    "authorization": {
+      "from": "0x...", "to": "0x...", "value": "850000",
+      "validAfter": "...", "validBefore": "...", "nonce": "0x..."
+    }
+  }
+}
+
+// Solana (exact scheme, SVM)
+{
+  "x402Version": 2,
+  "scheme": "exact",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  "payload": { "transaction": "<base64 VersionedTransaction>" }
+}
+```
+
+The Solana payload carries no amount and no payer: both are read out of the serialized
+transaction, then re-verified against the mint, destination ATA and fee payer before the
+payment is accepted, along with the transfer authority's ed25519 signature over the
+transaction message — an unsigned or tampered transaction is rejected up front. You may optionally include `amount` and `sender` in `payload`; if
+present they are used for the price check, and the transaction is still verified.
+
+These payloads work against `X-PAYMENT` on any paid endpoint and against `POST /x402/verify`
+and `POST /x402/settle`.
+
+## V1 Backward Compatibility
+
+The older `X-PAYMENT` header (V1 format with `maxAmountRequired`, `from`, `to` fields) is still accepted for backward compatibility. `PAYMENT-SIGNATURE` is the V2 spec header and is recommended for new integrations; it takes priority when both are sent.
 
 ## Circuit Breaker Fallback
 
@@ -288,7 +416,3 @@ curl https://api.limitguard.ai/.well-known/x402.json
 ```
 
 Returns a Bazaar-compatible service listing with all endpoints, pricing, and accepted payment methods.
-
-## V1 Backward Compatibility
-
-The older `PAYMENT-SIGNATURE` header (V1 format) is still accepted for backward compatibility. V2 (`X-PAYMENT`) is recommended for all new integrations.

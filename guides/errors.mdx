@@ -247,6 +247,27 @@ For AI agents, 402 is the expected first response when no payment or API key is 
 For testing x402 without spending real USDC, use Base Sepolia or Solana Devnet. Both are listed in the `accepts` array from sandbox and test environments.
 </Tip>
 
+{/* x402-error-codes:start */}
+### x402 error codes
+
+A 402 that rejects a payment carries `errorCode` in its body beside `error`; the facilitator endpoints `/x402/verify` and `/x402/settle` return the same values as `invalidReason`. This table is generated from the API's `X402ErrorCode` enum.
+
+| `errorCode` | Meaning | What to do |
+|---|---|---|
+| `insufficient_funds` | `Insufficient payment: X < Y`: the amount is below the price for this endpoint and quality tier. | Use the `amount` from the quote exactly; a non-default `X-Response-Quality` changes it. |
+| `invalid_nonce` | Defined for facilitator compatibility. The current server reports a malformed nonce as `invalid_payment` and never emits this value. | Treat it as `invalid_payment` if a client library surfaces it. |
+| `invalid_signature` | The EIP-3009 signature does not verify against `sender`, or a settled-transfer transaction hash failed or was rejected on chain. | Check that the signer is `sender` and the EIP-712 domain matches; for a transaction hash, confirm the transfer succeeded before presenting it. |
+| `unsupported_network` | The payload's `network` / `chainId` is not one the quote listed in `accepts`. | Pick a network from the `accepts` array. This is not a signature problem. |
+| `duplicate_settlement` | `Nonce already used (replay detected)`: the nonce was submitted within the last five minutes, or a settled-transfer proof (EVM `txHash`, confirmed Solana `txSignature`) was already redeemed within its 24-hour window. | Use a fresh random nonce per request. A settled transfer pays exactly once. |
+| `expired_payment` | `validBefore` has passed. Authorizations are valid for five minutes. | Sign a fresh authorization; never reuse a signed payload. |
+| `payment_required` | No API key on a paid tier and no payment header. The body is the quote: `accepts` lists the ways to pay and `extensions.bazaar.info` the recovery path. | Pay one of the `accepts` entries and retry, or create a key. |
+| `invalid_payment` | The payment header could not be parsed, the amount exceeds the maximum, or `validAfter` is still in the future. | Rebuild the payload from the quote; the envelope is documented on the x402 Protocol page. |
+| `server_error` | `Payment verification unavailable`: the server could not reach its own state store, or verification failed internally. | Retry with backoff. Nothing was charged. |
+| `fee_payer_not_configured` | Defined for the Solana co-sign path. The current server does not emit it. | Treat it as `server_error` if a client library surfaces it. |
+| `settlement_challenge_required` | A settled-transfer proof was presented without the `X-Payment-Challenge` minted with the 402 that quoted this resource, so the caller cannot be tied to the payment request. | Retry with the `X-Payment-Challenge` header from that 402 (also in the settled-transfer entry's `extra.challengeId`). A challenge is bound to one resource and expires. |
+| `settlement_claim_stuck` | An earlier verification of this proof hit a temporary internal error and its deduplication claim could not be released afterwards. | Retry later with the same proof. This is not a double charge and not a replay. |
+{/* x402-error-codes:end */}
+
 ---
 
 ## 403 Forbidden
